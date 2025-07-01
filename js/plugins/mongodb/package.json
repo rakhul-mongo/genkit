@@ -15,6 +15,14 @@
   ],
   "version": "1.0.0",
   "type": "commonjs",
+  "exports": {
+    ".": {
+      "require": "./lib/index.js",
+      "import": "./lib/index.mjs",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
   "scripts": {
     "check": "tsc",
     "compile": "tsup-node",

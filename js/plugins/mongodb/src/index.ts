@@ -1,3 +1,5 @@
-export const mongoTestFunction = () => {
-    console.log("mongodb");
-}
+export function mongodb() {
+  console.log('mongodb');
+};
+
+export default mongodb;
