@@ -1670,8 +1670,14 @@ importers:
         specifier: ^5.3.3
         version: 5.8.3
 
-  testapps/mongodb-vector-search:
+  testapps/mongodb-indexer:
     dependencies:
+      '@genkit-ai/googleai':
+        specifier: workspace:*
+        version: link:../../plugins/googleai
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.5.0
       genkit:
         specifier: workspace:*
         version: link:../../genkit

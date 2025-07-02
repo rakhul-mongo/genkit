@@ -13,5 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { mongodb } from 'genkitx-mongodb';
-mongodb();
+import { config } from 'dotenv';
+config();
+
+export const MONGODB_URL = process.env.MONGODB_URL!;
+export const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME!;
+export const MONGODB_COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME!;
