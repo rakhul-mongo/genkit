@@ -18,7 +18,8 @@ import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
 import { MongoDBOptions, MongoConnection, validateMongoDBOptions } from './validation';
 import { createMongoConnection, cleanupConnections } from './connection';
-import { loadMongoDBIndexer } from './indexer';
+import { defineMongoDBIndexer } from './indexer';
+import { defineMongoDBRetriever } from './retriever';
 
 export function mongodb(
   params: MongoDBOptions[]
@@ -29,13 +30,16 @@ export function mongodb(
       const connections: MongoConnection[] = [];
 
       try {
-        validateMongoDBOptions(params);
-
         for (const mongoDBOptions of params) {
+
+          validateMongoDBOptions(mongoDBOptions);
+
           const connection = await createMongoConnection(mongoDBOptions);
           connections.push(connection);
 
-          loadMongoDBIndexer(ai, connection);
+          defineMongoDBIndexer(ai, connection.collection);
+          defineMongoDBRetriever(ai, connection.collection);
+
         }
       } catch (error) {
         await cleanupConnections(connections);
@@ -45,8 +49,9 @@ export function mongodb(
   );
 }
 
-// Re-export types and functions for external use
+export type { MongoDBOptions, MongoDBIndexerOptions, MongoDBRetrieverOptions } from './validation';
 export { mongodbIndexerRef } from './indexer';
-export type { MongoDBOptions, MongoDBIndexerOptions } from './validation';
+export { mongodbRetrieverRef } from './retriever';
+export { RETRIEVAL_MODE } from './constants';
 
 export default mongodb;

@@ -17,7 +17,7 @@
 import { z } from 'genkit';
 import { EmbedderArgument } from 'genkit';
 import { Collection, MongoClient } from 'mongodb';
-import { MAX_BATCH_SIZE } from './constants';
+import { MAX_BATCH_SIZE, MAX_LIMIT, MAX_NUM_CANDIDATES, RETRIEVAL_MODE } from './constants';
 
 export type EmbedderCustomOptions = z.ZodTypeAny;
 
@@ -38,14 +38,13 @@ export const MongoDBOptionsSchema = z.object({
 
 export type MongoDBOptions = z.infer<typeof MongoDBOptionsSchema>;
 
-export function validateMongoDBOptions(params: MongoDBOptions[]) {
-    for (let i = 0; i < params.length; i++) {
-      try {
-        MongoDBOptionsSchema.parse(params[i]);
-      } catch (validationError) {
-        throw new Error(`Invalid MongoDB options at index ${i}: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
-      }
-    }
+
+export function validateMongoDBOptions(options: MongoDBOptions) {
+  try {
+    MongoDBOptionsSchema.parse(options);
+  } catch (validationError) {
+    throw new Error(`Invalid MongoDB options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
 }
 
 export const MongoDBIndexerOptionsSchema = z.object({
@@ -59,12 +58,87 @@ export const MongoDBIndexerOptionsSchema = z.object({
 
 export type MongoDBIndexerOptions = z.infer<typeof MongoDBIndexerOptionsSchema>;
 
-export function validateMongoDBIndexerOptions(mongodbIndexerOptions: MongoDBIndexerOptions[]) {
-    for (let i = 0; i < mongodbIndexerOptions.length; i++) {
-      try {
-        MongoDBIndexerOptionsSchema.parse(mongodbIndexerOptions[i]);
-      } catch (validationError) {
-        throw new Error(`Invalid MongoDB Indexer options at index ${i}: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
-      }
-    }
+export function validateMongoDBIndexerOptions(options: MongoDBIndexerOptions) {
+  try {
+    MongoDBIndexerOptionsSchema.parse(options);
+  } catch (validationError) {
+    throw new Error(`Invalid MongoDB Indexer options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
+
+const textSearchSchema = z.object({
+  index: z.string().optional(),
+  path: z.string().min(1, 'Path is required'),
+  matchCriteria: z.enum(['all', 'any']).optional(),
+  fuzzy: z.object({
+    maxEdits: z.number().min(1).max(2).optional(),
+    prefixLength: z.number().optional(),
+    maxExpansions: z.number().optional(),
+  }).optional(),
+  limit: z.number().int().positive().max(MAX_LIMIT).optional(),
+});
+
+export type TextSearchOptions = z.infer<typeof textSearchSchema>;
+
+const embedderOptionsSchema = z.object({
+  embedder: z.custom<EmbedderArgument<EmbedderCustomOptions>>(),
+  embedderOptions: z.any().optional(),
+})
+
+export type EmbedderOptions = z.infer<typeof embedderOptionsSchema>;
+
+const vectorSearchSchema = embedderOptionsSchema.extend({
+  index: z.string().min(1, 'Index is required'),
+  path: z.string().min(1, 'Path is required'),
+  exact: z.boolean().optional(),
+  numCandidates: z.number().int().positive().max(MAX_NUM_CANDIDATES).optional(),
+  limit: z.number().int().positive().max(MAX_LIMIT).optional(),
+  filter: z.record(z.any()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.exact === false && !data.numCandidates) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "numCandidates required when exact is false", path: ["numCandidates"] });
+  }
+  if (data.numCandidates && data.exact === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "exact required when numCandidates provided", path: ["exact"] });
+  }
+  if (data.limit && data.numCandidates && data.limit > data.numCandidates) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "limit cannot exceed numCandidates", path: ["limit"] });
+  }
+});
+
+export type VectorSearchOptions = z.infer<typeof vectorSearchSchema>;
+
+const hybridSearchSchema = embedderOptionsSchema.extend({});
+
+export type HybridSearchOptions = z.infer<typeof hybridSearchSchema>;
+
+const textModeSchema = z.object({
+  mode: z.literal(RETRIEVAL_MODE.TEXT),
+  text: textSearchSchema,
+});
+
+const vectorModeSchema = z.object({
+  mode: z.literal(RETRIEVAL_MODE.VECTOR),
+  vector: vectorSearchSchema,
+});
+
+const hybridModeSchema = z.object({
+  mode: z.literal(RETRIEVAL_MODE.HYBRID),
+  hybrid: hybridSearchSchema,
+});
+
+export const MongoDBRetrieverOptionsSchema = z.discriminatedUnion('mode', [
+  textModeSchema,
+  vectorModeSchema,
+  hybridModeSchema,
+]);
+
+export type MongoDBRetrieverOptions = z.infer<typeof MongoDBRetrieverOptionsSchema>;
+
+export function validateMongoDBRetrieverOptions(options: MongoDBRetrieverOptions) {
+  try {
+    MongoDBRetrieverOptionsSchema.parse(options);
+  } catch (validationError) {
+    throw new Error(`Invalid MongoDB Retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
 }

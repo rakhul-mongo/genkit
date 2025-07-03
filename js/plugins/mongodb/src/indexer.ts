@@ -15,39 +15,33 @@
  */
 
 import { Genkit } from 'genkit';
-import { indexerRef } from 'genkit/retriever';
+import { indexerRef, Document } from 'genkit/retriever';
 import { Collection, Document as MongoDocument } from 'mongodb';
-import { CONTENT_FIELD, CONTENT_TYPE_FIELD, EMBEDDING_FIELD, DEFAULT_BATCH_SIZE } from './constants';
+import { CONTENT_FIELD, CONTENT_TYPE_FIELD, EMBEDDING_FIELD, DEFAULT_BATCH_SIZE, MONGODB_IDENTIFIER } from './constants';
 import { MongoDBIndexerOptions, MongoDBIndexerOptionsSchema, validateMongoDBIndexerOptions } from './validation';
 import { retryWithBackoff } from './retry';
-
-export function getMongoDBIndexerName(dbName: string, collectionName: string): string {
-    return `mongodb/${dbName}/${collectionName}`;
-}
 
 function createMongoDBDocuments(
     documents: any[],
     embeddings: any[],
-    mongodbIndexerOptions: MongoDBIndexerOptions
+    options: MongoDBIndexerOptions
 ) {
-    const embeddingField = mongodbIndexerOptions.embeddingField ?? EMBEDDING_FIELD;
-    const contentField = mongodbIndexerOptions.contentField ?? CONTENT_FIELD;
-    const contentTypeField = mongodbIndexerOptions.contentTypeField ?? CONTENT_TYPE_FIELD;
+    const embeddingField = options.embeddingField ?? EMBEDDING_FIELD;
+    const contentField = options.contentField ?? CONTENT_FIELD;
+    const contentTypeField = options.contentTypeField ?? CONTENT_TYPE_FIELD;
 
-    return documents.flatMap((doc, i) => {
-      const embeddingDocuments = doc.getEmbeddingDocuments(embeddings[i]);
+    return documents.flatMap((document, i) => {
+      const embeddingDocuments = document.getEmbeddingDocuments(embeddings[i]);
       return embeddingDocuments.map((embeddingDocument: any, j: number) => {
         const embedding = embeddings[i][j]?.embedding;
-
         if (!embedding) {
           throw new Error(`Missing embedding for document ${i}, chunk ${j}`);
         }
-
         return {
           [embeddingField]: embedding,
           ...(embeddingDocument.data != null ? { [contentField]: embeddingDocument.data } : {}),
           ...(embeddingDocument.dataType ? { [contentTypeField]: embeddingDocument.dataType } : {}),
-          docMetadata: embeddingDocument.metadata,
+          metadata: embeddingDocument.metadata,
           indexedAt: new Date(),
         };
       });
@@ -56,15 +50,15 @@ function createMongoDBDocuments(
 
 async function generateEmbeddings(
     ai: Genkit,
-    documents: any[],
-    mongodbIndexerOptions: MongoDBIndexerOptions
+    documents: Array<Document>,
+    options: MongoDBIndexerOptions
 ) {
     return await Promise.all(
       documents.map((document) =>
         ai.embed({
-          embedder: mongodbIndexerOptions.embedder,
+          embedder: options.embedder,
           content: document,
-          options: mongodbIndexerOptions.embedderOptions,
+          options: options.embedderOptions,
         })
       )
     );
@@ -73,36 +67,36 @@ async function generateEmbeddings(
 async function processDocumentBatch(
   ai: Genkit,
   collection: Collection,
-  mongodbIndexerOptions: MongoDBIndexerOptions,
-  documents: any[],
+  documents: Array<Document>,
+  options: MongoDBIndexerOptions,
 ) {
   return retryWithBackoff(
     async () => {
-      const embeddings = await generateEmbeddings(ai, documents, mongodbIndexerOptions);
-      const mongoDocuments = createMongoDBDocuments(documents, embeddings, mongodbIndexerOptions);
-      await collection.insertMany(mongoDocuments as MongoDocument[], { ordered: false });
+      const embeddings = await generateEmbeddings(ai, documents, options);
+      const mongoDocuments = createMongoDBDocuments(documents, embeddings, options);
+      await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
     },
   );
 }
 
-export function loadMongoDBIndexer(
+export function defineMongoDBIndexer(
   ai: Genkit,
-  connection: { db: { databaseName: string }, collection: Collection },
+  collection: Collection,
 ) {
   return ai.defineIndexer(
     {
-      name: getMongoDBIndexerName(connection.db.databaseName, connection.collection.collectionName),
+      name: MONGODB_IDENTIFIER(collection.dbName, collection.collectionName),
     },
-    async (documents, mongodbIndexerOptions) => {
-      validateMongoDBIndexerOptions(mongodbIndexerOptions);
+    async (documents: Array<Document>, options: MongoDBIndexerOptions) => {
       console.log(`Processing ${documents.length} documents for MongoDB indexing`);
+      validateMongoDBIndexerOptions(options);
 
-      const batchSize = mongodbIndexerOptions.batchSize ?? DEFAULT_BATCH_SIZE;
+      const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
 
       try {
         for (let i = 0; i < documents.length; i += batchSize) {
           const batch = documents.slice(i, i + batchSize);
-          await processDocumentBatch(ai, connection.collection, mongodbIndexerOptions, batch);
+          await processDocumentBatch(ai, collection, batch, options);
         }
 
         console.log(`Successfully indexed ${documents.length} documents`);
@@ -115,7 +109,7 @@ export function loadMongoDBIndexer(
 }
 
 export function mongodbIndexerRef(indexerName: {dbName: string, collectionName: string}) {
-  const mongoDbIndexerName = getMongoDBIndexerName(indexerName.dbName, indexerName.collectionName);
+  const mongoDbIndexerName = MONGODB_IDENTIFIER(indexerName.dbName, indexerName.collectionName);
   return indexerRef({
     name: mongoDbIndexerName,
     info: {

@@ -1,5 +1,5 @@
 {
-  "name": "mongodb-indexer",
+  "name": "mongodb-retriever-vector-mode",
   "version": "1.0.0",
   "main": "./lib/src/index.js",
   "scripts": {
