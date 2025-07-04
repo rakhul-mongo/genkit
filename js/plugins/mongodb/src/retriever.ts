@@ -136,7 +136,7 @@ async function retrieveHybrid(ai: Genkit, collection: Collection, document: Docu
   }
 }
 
-export function defineMongoDBRetriever(
+export function defineRetriever(
   ai: Genkit,
   collection: Collection,
 ) {

@@ -79,7 +79,7 @@ async function processDocumentBatch(
   );
 }
 
-export function defineMongoDBIndexer(
+export function defineIndexer(
   ai: Genkit,
   collection: Collection,
 ) {

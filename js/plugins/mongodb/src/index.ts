@@ -18,8 +18,9 @@ import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
 import { MongoDBOptions, MongoConnection, validateMongoDBOptions } from './validation';
 import { createMongoConnection, cleanupConnections } from './connection';
-import { defineMongoDBIndexer } from './indexer';
-import { defineMongoDBRetriever } from './retriever';
+import { defineIndexer } from './indexer';
+import { defineRetriever } from './retriever';
+import { defineCRUDTools } from './crud';
 
 export function mongodb(
   params: MongoDBOptions[]
@@ -37,8 +38,9 @@ export function mongodb(
           const connection = await createMongoConnection(mongoDBOptions);
           connections.push(connection);
 
-          defineMongoDBIndexer(ai, connection.collection);
-          defineMongoDBRetriever(ai, connection.collection);
+          defineIndexer(ai, connection.collection);
+          defineRetriever(ai, connection.collection);
+          defineCRUDTools(ai, connection.collection);
 
         }
       } catch (error) {
