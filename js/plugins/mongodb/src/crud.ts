@@ -17,17 +17,13 @@
 import { Genkit } from 'genkit';
 import { z } from 'genkit';
 import { Collection, ObjectId } from 'mongodb';
-import { MONGODB_IDENTIFIER } from './constants';
+import { MONGO_IDENTIFIER } from './constants';
 import { retryWithBackoff } from './retry';
 
-
-export function defineCRUDTools(ai: Genkit, collection: Collection) {
-  const toolPrefix = MONGODB_IDENTIFIER(collection.dbName, collection.collectionName);
-
-  // Create Document Tool
+function defineInsertTool(ai: Genkit, collection: Collection) {
   ai.defineTool(
     {
-      name: `${toolPrefix}/insertOne`,
+      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/insertOne`,
       description: `Create a new document in the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         document: z.object({}).passthrough().describe('The document data to insert'),
@@ -64,11 +60,13 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
       }
     }
   );
+}
 
-  // Get Document by ID Tool
+
+function defineFindByIdTool(ai: Genkit, collection: Collection) {
   ai.defineTool(
     {
-      name: `${toolPrefix}/findById`,
+      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/findById`,
       description: `Retrieve a document by its ID from the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to retrieve'),
@@ -114,19 +112,17 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
       }
     }
   );
+}
 
-  // Update Document by ID Tool
+function defineUpdateTool(ai: Genkit, collection: Collection) {
   ai.defineTool(
     {
-      name: `${toolPrefix}/updateOneById`,
+      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/updateOneById`,
       description: `Update a document by its ID in the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to update'),
         update: z.object({}).passthrough().describe('The MongoDB update operations to apply (must use atomic operators like $set, $unset, $inc, etc.)'),
-        // options: z.object({
-        //   upsert: z.boolean().optional().describe('If true, create the document if it doesn\'t exist'),
-        //   arrayFilters: z.array(z.record(z.any())).optional().describe('Array filters for array update operations'),
-        // }).optional(),
+        options: z.object({}).passthrough().describe('The MongoDB update options to apply').optional(),
       }),
       outputSchema: z.object({
         matchedCount: z.number().describe('Number of documents that matched the filter'),
@@ -136,7 +132,7 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
         message: z.string().describe('Operation result message'),
       }),
     },
-    async ({ id, update, }) => {// options }) => {
+    async ({ id, update, options }) => {
       console.log(`Updating document with ID: ${id} in collection ${collection.collectionName}`);
 
       try {
@@ -145,7 +141,7 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
             return await collection.updateOne(
               { _id: new ObjectId(id) },
               update,
-              // options
+              options
             );
           }
         );
@@ -170,11 +166,12 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
       }
     }
   );
+}
 
-  // Delete Document by ID Tool
+function defineDeleteTool(ai: Genkit, collection: Collection) {
   ai.defineTool(
     {
-      name: `${toolPrefix}/deleteOneById`,
+      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/deleteOneById`,
       description: `Delete a document by its ID from the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to delete'),
@@ -211,6 +208,11 @@ export function defineCRUDTools(ai: Genkit, collection: Collection) {
       }
     }
   );
+}
 
-  console.log(`CRUD tools defined for collection ${collection.collectionName}`);
+export function defineCRUDTools(ai: Genkit, collection: Collection) {
+  defineInsertTool(ai, collection);
+  defineFindByIdTool(ai, collection);
+  defineUpdateTool(ai, collection);
+  defineDeleteTool(ai, collection);
 }

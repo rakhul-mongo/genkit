@@ -16,14 +16,15 @@
 
 import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
-import { MongoDBOptions, MongoConnection, validateMongoDBOptions } from './validation';
+import { MongoOptions, MongoConnection, validateMongoOptions } from './validation';
 import { createMongoConnection, cleanupConnections } from './connection';
 import { defineIndexer } from './indexer';
 import { defineRetriever } from './retriever';
 import { defineCRUDTools } from './crud';
+import { defineSearchIndexTools } from './search-indexes';
 
 export function mongodb(
-  params: MongoDBOptions[]
+  params: MongoOptions[]
 ): GenkitPlugin {
   return genkitPlugin(
     'mongodb',
@@ -31,29 +32,29 @@ export function mongodb(
       const connections: MongoConnection[] = [];
 
       try {
-        for (const mongoDBOptions of params) {
+        for (const mongoOptions of params) {
 
-          validateMongoDBOptions(mongoDBOptions);
+          validateMongoOptions(mongoOptions);
 
-          const connection = await createMongoConnection(mongoDBOptions);
+          const connection = await createMongoConnection(mongoOptions);
           connections.push(connection);
 
           defineIndexer(ai, connection.collection);
           defineRetriever(ai, connection.collection);
           defineCRUDTools(ai, connection.collection);
-
+          defineSearchIndexTools(ai, connection.collection);
         }
       } catch (error) {
         await cleanupConnections(connections);
-        throw new Error(`MongoDB plugin initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(`Mongo plugin initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   );
 }
 
-export type { MongoDBOptions, MongoDBIndexerOptions, MongoDBRetrieverOptions } from './validation';
-export { mongodbIndexerRef } from './indexer';
-export { mongodbRetrieverRef } from './retriever';
+export type { MongoOptions, MongoIndexerOptions, MongoRetrieverOptions } from './validation';
+export { mongoIndexerRef } from './indexer';
+export { mongoRetrieverRef } from './retriever';
 export { RETRIEVAL_MODE } from './constants';
 
 export default mongodb;

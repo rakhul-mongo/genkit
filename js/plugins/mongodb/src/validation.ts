@@ -27,8 +27,8 @@ export interface MongoConnection {
     collection: Collection;
 }
 
-export const MongoDBOptionsSchema = z.object({
-  url: z.string().url('Invalid MongoDB URL'),
+export const MongoOptionsSchema = z.object({
+  url: z.string().url('Invalid Mongo URL'),
   mongoClientOptions: z.any().optional(),
   dbName: z.string().min(1, 'Database name is required'),
   dbOptions: z.any().optional(),
@@ -36,18 +36,18 @@ export const MongoDBOptionsSchema = z.object({
   collectionOptions: z.any().optional(),
 });
 
-export type MongoDBOptions = z.infer<typeof MongoDBOptionsSchema>;
+export type MongoOptions = z.infer<typeof MongoOptionsSchema>;
 
 
-export function validateMongoDBOptions(options: MongoDBOptions) {
+export function validateMongoOptions(options: MongoOptions) {
   try {
-    MongoDBOptionsSchema.parse(options);
+    MongoOptionsSchema.parse(options);
   } catch (validationError) {
-    throw new Error(`Invalid MongoDB options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
 }
 
-export const MongoDBIndexerOptionsSchema = z.object({
+export const MongoIndexerOptionsSchema = z.object({
   embedder: z.custom<EmbedderArgument<EmbedderCustomOptions>>(),
   embedderOptions: z.any().optional(),
   embeddingField: z.string().min(1).optional(),
@@ -56,13 +56,13 @@ export const MongoDBIndexerOptionsSchema = z.object({
   batchSize: z.number().int().positive().max(MAX_BATCH_SIZE).optional(),
 });
 
-export type MongoDBIndexerOptions = z.infer<typeof MongoDBIndexerOptionsSchema>;
+export type MongoIndexerOptions = z.infer<typeof MongoIndexerOptionsSchema>;
 
-export function validateMongoDBIndexerOptions(options: MongoDBIndexerOptions) {
+export function validateMongoIndexerOptions(options: MongoIndexerOptions) {
   try {
-    MongoDBIndexerOptionsSchema.parse(options);
+    MongoIndexerOptionsSchema.parse(options);
   } catch (validationError) {
-    throw new Error(`Invalid MongoDB Indexer options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+    throw new Error(`Invalid Mongo Indexer options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
 }
 
@@ -127,18 +127,18 @@ const hybridModeSchema = z.object({
   hybrid: hybridSearchSchema,
 });
 
-export const MongoDBRetrieverOptionsSchema = z.discriminatedUnion('mode', [
+export const MongoRetrieverOptionsSchema = z.discriminatedUnion('mode', [
   textModeSchema,
   vectorModeSchema,
   hybridModeSchema,
 ]);
 
-export type MongoDBRetrieverOptions = z.infer<typeof MongoDBRetrieverOptionsSchema>;
+export type MongoRetrieverOptions = z.infer<typeof MongoRetrieverOptionsSchema>;
 
-export function validateMongoDBRetrieverOptions(options: MongoDBRetrieverOptions) {
+export function validateMongoRetrieverOptions(options: MongoRetrieverOptions) {
   try {
-    MongoDBRetrieverOptionsSchema.parse(options);
+    MongoRetrieverOptionsSchema.parse(options);
   } catch (validationError) {
-    throw new Error(`Invalid MongoDB Retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+    throw new Error(`Invalid Mongo Retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
 }

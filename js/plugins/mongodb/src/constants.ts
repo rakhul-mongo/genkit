@@ -37,5 +37,5 @@ export enum RETRIEVAL_MODE {
   HYBRID = "hybrid"
 }
 
-export const MONGODB_IDENTIFIER = (dbName: string, collectionName: string): string =>
+export const MONGO_IDENTIFIER = (dbName: string, collectionName: string): string =>
     `mongodb/${dbName}/${collectionName}`;

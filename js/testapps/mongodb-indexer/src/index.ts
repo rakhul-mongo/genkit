@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb, mongodbIndexerRef } from 'genkitx-mongodb';
+import { mongodb, mongoIndexerRef } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { Document } from 'genkit/retriever';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
@@ -33,14 +33,14 @@ const ai = genkit({
   ],
 });
 
-const indexer = mongodbIndexerRef({ dbName: MONGODB_DB_NAME, collectionName: MONGODB_COLLECTION_NAME });
+const indexer = mongoIndexerRef(MONGODB_DB_NAME, MONGODB_COLLECTION_NAME);
 
 async function main() {
   console.log("Indexing documents...");
   await ai.index({
     indexer,
     documents: [
-      Document.fromText('The space shuttle launched successfully from Cape Canaveral.', { id: 'doc1' }),
+      // Document.fromText('The space shuttle launched successfully from Cape Canaveral.', { id: 'doc1' }),
       // Document.fromText('A delicious recipe for making vegan lasagna at home.', { id: 'doc2' }),
       // Document.fromText('A brief history of the Apollo moon missions.', { id: 'doc3' }),
       // Document.fromText('Climate change is accelerating due to greenhouse gas emissions.', { id: 'doc4' }),
@@ -48,7 +48,7 @@ async function main() {
       // Document.fromText('Apple announced new features for iOS 18 at the annual developer conference.', { id: 'doc6' }),
       // Document.fromText('The Amazon rainforest is home to over 3 million species of plants and animals.', { id: 'doc7' }),
       // Document.fromText('A beginner\'s guide to investing in mutual funds and ETFs.', { id: 'doc8' }),
-      // Document.fromText('Top 10 destinations to visit in Europe during spring.', { id: 'doc9' }),
+      Document.fromText('Top 10 destinations to visit in Europe during spring.', { id: 'doc9' }),
       // Document.fromText('Understanding the basics of machine learning and neural networks.', { id: 'doc10' }),
       // Document.fromText('The human brain has around 86 billion neurons.', { id: 'doc11' }),
       // Document.fromText('The World Health Organization declared the end of the global pandemic emergency.', { id: 'doc12' }),

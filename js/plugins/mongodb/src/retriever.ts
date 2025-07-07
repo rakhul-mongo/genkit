@@ -15,8 +15,8 @@
  */
 
 import { retrieverRef, Document } from "genkit/retriever";
-import { EmbedderOptions, HybridSearchOptions, MongoDBRetrieverOptions, MongoDBRetrieverOptionsSchema, TextSearchOptions, VectorSearchOptions, validateMongoDBRetrieverOptions } from "./validation";
-import { DEFAULT_LIMIT, MONGODB_IDENTIFIER, RETRIEVAL_MODE } from "./constants";
+import { EmbedderOptions, HybridSearchOptions, MongoRetrieverOptions, MongoRetrieverOptionsSchema, TextSearchOptions, VectorSearchOptions, validateMongoRetrieverOptions } from "./validation";
+import { DEFAULT_LIMIT, MONGO_IDENTIFIER, RETRIEVAL_MODE } from "./constants";
 import { Genkit } from "genkit";
 import { Collection } from "mongodb";
 import { retryWithBackoff } from "./retry";
@@ -82,7 +82,7 @@ async function generateEmbeddings(
   });
 }
 
-async function retrieveText(ai: Genkit, collection: Collection, query: string, options: TextSearchOptions) {
+async function retrieveText(collection: Collection, query: string, options: TextSearchOptions) {
   console.log(`Executing text search with query: "${query}"`);
 
   try {
@@ -142,16 +142,16 @@ export function defineRetriever(
 ) {
   return ai.defineRetriever(
     {
-      name: MONGODB_IDENTIFIER(collection.dbName, collection.collectionName),
+      name: MONGO_IDENTIFIER(collection.dbName, collection.collectionName),
     },
-    async (document: Document, options: MongoDBRetrieverOptions) => {
-      console.log(`Querying MongoDB via retriever with mode: ${options.mode}`);
-      validateMongoDBRetrieverOptions(options);
+    async (document: Document, options: MongoRetrieverOptions) => {
+      console.log(`Querying Mongo via retriever with mode: ${options.mode}`);
+      validateMongoRetrieverOptions(options);
 
       try {
         switch (options.mode) {
           case RETRIEVAL_MODE.TEXT:
-            return await retrieveText(ai, collection, document.data, (options as any).text);
+            return await retrieveText(collection, document.data, (options as any).text);
           case RETRIEVAL_MODE.VECTOR:
             return await retrieveVector(ai, collection, document, (options as any).vector);
           case RETRIEVAL_MODE.HYBRID:
@@ -160,18 +160,18 @@ export function defineRetriever(
             throw new Error(`Invalid retrieval mode: ${(options as any).mode}`);
         }
       } catch (error) {
-        console.error('Error during MongoDB retrieval:', error);
-        throw new Error(`MongoDB retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error during Mongo retrieval:', error);
+        throw new Error(`Mongo retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   );
 }
 
-export function mongodbRetrieverRef (retrieverName: {dbName: string, collectionName: string}) {
-    const mongoDbRetrieverName = MONGODB_IDENTIFIER(retrieverName.dbName, retrieverName.collectionName);
+export function mongoRetrieverRef (dbName: string, collectionName: string) {
+    const name = MONGO_IDENTIFIER(dbName, collectionName);
     return retrieverRef({
-      name: mongoDbRetrieverName,
-      info: { label: `MongoDB Retriever - ${mongoDbRetrieverName}` },
-      configSchema: MongoDBRetrieverOptionsSchema,
+      name,
+      info: { label: `Mongo Retriever - ${name}` },
+      configSchema: MongoRetrieverOptionsSchema,
     });
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb, mongodbRetrieverRef, RETRIEVAL_MODE } from 'genkitx-mongodb';
+import { mongodb, mongoRetrieverRef, RETRIEVAL_MODE } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
 
@@ -32,7 +32,7 @@ const ai = genkit({
   ],
 });
 
-const retriever = mongodbRetrieverRef({ dbName: MONGODB_DB_NAME, collectionName: MONGODB_COLLECTION_NAME });
+const retriever = mongoRetrieverRef(MONGODB_DB_NAME, MONGODB_COLLECTION_NAME);
 
 async function main() {
 
@@ -40,7 +40,7 @@ async function main() {
 
   const documents = await ai.retrieve({
     retriever,
-    query: "The space shuttle launched successfully from Cape Canaveral.",
+    query: "Tyrell",
     options: {
       mode: RETRIEVAL_MODE.TEXT,
       text: {

@@ -15,16 +15,21 @@
  */
 
 import { MongoClient } from 'mongodb';
-import { MongoDBOptions, MongoConnection } from './validation';
+import { MongoOptions, MongoConnection } from './validation';
 
-export async function createMongoConnection(options: MongoDBOptions): Promise<MongoConnection> {
-  const client = new MongoClient(options.url, options.mongoClientOptions);
-  await client.connect();
+export async function createMongoConnection(options: MongoOptions): Promise<MongoConnection> {
+  try {
+    const client = new MongoClient(options.url, options.mongoClientOptions);
+    await client.connect();
 
-  const db = client.db(options.dbName, options.dbOptions);
-  const collection = db.collection(options.collectionName, options.collectionOptions);
+    const db = client.db(options.dbName, options.dbOptions);
+    const collection = db.collection(options.collectionName, options.collectionOptions);
 
-  return { client, db, collection };
+    return { client, db, collection };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to create MongoDB connection: ${errorMessage}`);
+  }
 }
 
 async function closeMongoConnection(connection: MongoConnection): Promise<void> {
@@ -35,8 +40,16 @@ async function closeMongoConnection(connection: MongoConnection): Promise<void> 
   }
 }
 
-export async function cleanupConnections(connections: MongoConnection[]) {
-  for (const connection of connections) {
-    await closeMongoConnection(connection);
+export async function cleanupConnections(connections: MongoConnection[]): Promise<void> {
+  if (!connections || connections.length === 0) {
+    return;
+  }
+
+  const closePromises = connections.map(connection => closeMongoConnection(connection));
+
+  try {
+    await Promise.allSettled(closePromises);
+  } catch (error) {
+    console.error('Error during connection cleanup:', error);
   }
 }
