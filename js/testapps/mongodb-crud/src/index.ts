@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb, mongoToolRef } from 'genkitx-mongodb';
+import { mongoCrudToolsRefArray, mongodb } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
 
@@ -24,16 +24,7 @@ const ai = genkit({
     googleAI(),
     mongodb([{
       url: MONGODB_URL,
-      connections: [{
-        dbName: MONGODB_DB_NAME,
-        collectionName: MONGODB_COLLECTION_NAME,
-        crudTools: {
-          createId: 'create',
-          readId: 'read',
-          updateId: 'update',
-          deleteId: 'delete',
-        }
-      }]
+      crudTools: { id: 'crud' }
     }])
   ]
 });
@@ -43,9 +34,10 @@ async function main() {
 
   try {
     const { text } = await ai.generate({
-      model: googleAI.model('gemini-2.0-flash'),
+      model: googleAI.model('gemini-1.5-flash'),
       prompt: `
       Using the available tools,
+      For the following database: ${MONGODB_DB_NAME} and collection: ${MONGODB_COLLECTION_NAME}
       Please insert a new document with {"name": "John Doe", "email": "john.doe@example.com", "age": 50}.
       With the insertedId, find the document by id and return the document.
       Now update the document with the inserted id to update: {$set: {age: 12}} using the available tool.
@@ -53,10 +45,7 @@ async function main() {
       `,
       // Now delete the documents with those two ids
       tools: [
-        mongoToolRef('create'),
-        mongoToolRef('read'),
-        mongoToolRef('update'),
-        mongoToolRef('delete'),
+        ...mongoCrudToolsRefArray('crud'),
       ],
       maxTurns: 10,
     });

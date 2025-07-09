@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb, mongoToolRef } from 'genkitx-mongodb';
+import { mongodb, mongoSearchIndexToolsRefArray } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_TEXT_SEARCH_FIELD_NAME, MONGODB_TEXT_SEARCH_INDEX_NAME, MONGODB_URL, MONGODB_VECTOR_SEARCH_FIELD_NAME, MONGODB_VECTOR_SEARCH_INDEX_NAME, MONGODB_VECTOR_SEARCH_NUM_DIMENSIONS, MONGODB_VECTOR_SEARCH_SIMILARITY } from './config';
 
@@ -24,15 +24,7 @@ const ai = genkit({
     googleAI(),
     mongodb([{
       url: MONGODB_URL,
-      connections: [{
-        dbName: MONGODB_DB_NAME,
-        collectionName: MONGODB_COLLECTION_NAME,
-        searchIndexTools: {
-          createId: 'create',
-          readId: 'read',
-          deleteId: 'delete',
-        }
-      }]
+      searchIndexTools: { id: 'search-indexes' }
     }])
   ]
 });
@@ -40,17 +32,13 @@ const ai = genkit({
 async function createTextSearchIndex() {
   console.log("Testing MongoDB Index Management tools...");
 
-  await ai.generate({
-    model: googleAI.model('gemini-2.0-flash'),
-    prompt: 'Test',
-  });
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
       prompt: `
       Using the available tools,
-      Please create a search index on the collection with the following definition:
+      For the following dbName: ${MONGODB_DB_NAME} and collectionName: ${MONGODB_COLLECTION_NAME}
+      Please create a search index on the collection with the following schema:
       {
         name: "${MONGODB_TEXT_SEARCH_INDEX_NAME}",
         definition: {
@@ -69,9 +57,7 @@ async function createTextSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        mongoToolRef('create'),
-        mongoToolRef('read'),
-        mongoToolRef('delete'),
+        ...mongoSearchIndexToolsRefArray('search-indexes'),
       ],
       maxTurns: 10,
     });
@@ -86,23 +72,17 @@ async function createTextSearchIndex() {
 async function dropTextSearchIndex() {
   console.log("Testing MongoDB Index Management tools...");
 
-  await ai.generate({
-    model: googleAI.model('gemini-2.0-flash'),
-    prompt: 'Test',
-  });
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
       prompt: `
+      For the following database: ${MONGODB_DB_NAME} and collection: ${MONGODB_COLLECTION_NAME}
       Using the available tools,
       Please drop the search index with name "${MONGODB_TEXT_SEARCH_INDEX_NAME}"
       Please list all indexes.
       `,
       tools: [
-        mongoToolRef('create'),
-        mongoToolRef('read'),
-        mongoToolRef('delete'),
+        ...mongoSearchIndexToolsRefArray('search-indexes'),
       ],
       maxTurns: 10,
     });
@@ -117,15 +97,11 @@ async function dropTextSearchIndex() {
 async function createVectorSearchIndex() {
   console.log("Testing MongoDB Index Management tools...");
 
-  await ai.generate({
-    model: googleAI.model('gemini-2.0-flash'),
-    prompt: 'Test',
-  });
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
       prompt: `
+      For the following database: ${MONGODB_DB_NAME} and collection: ${MONGODB_COLLECTION_NAME}
       Using the available tools,
       Please create a search index on the collection with the following definition:
       {
@@ -146,9 +122,7 @@ async function createVectorSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        mongoToolRef('create'),
-        mongoToolRef('read'),
-        mongoToolRef('delete'),
+        ...mongoSearchIndexToolsRefArray('search-indexes'),
       ],
       maxTurns: 10,
     });
@@ -163,23 +137,17 @@ async function createVectorSearchIndex() {
 async function dropVectorSearchIndex() {
   console.log("Testing MongoDB Index Management tools...");
 
-  await ai.generate({
-    model: googleAI.model('gemini-2.0-flash'),
-    prompt: 'Test',
-  });
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
       prompt: `
+      For the following database: ${MONGODB_DB_NAME} and collection: ${MONGODB_COLLECTION_NAME}
       Using the available tools,
       Please drop the search index with name "${MONGODB_VECTOR_SEARCH_INDEX_NAME}"
       Please list all indexes.
       `,
       tools: [
-        mongoToolRef('create'),
-        mongoToolRef('read'),
-        mongoToolRef('delete'),
+        ...mongoSearchIndexToolsRefArray('search-indexes'),
       ],
       maxTurns: 10,
     });
@@ -191,7 +159,7 @@ async function dropVectorSearchIndex() {
   }
 }
 
-createTextSearchIndex().catch(console.error);
-// createVectorSearchIndex().catch(console.error);
+// createTextSearchIndex().catch(console.error);
+createVectorSearchIndex().catch(console.error);
 // dropTextSearchIndex().catch(console.error);
 // dropVectorSearchIndex().catch(console.error);

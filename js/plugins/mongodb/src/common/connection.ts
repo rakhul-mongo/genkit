@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { CollectionOptions, DbOptions, MongoClient, MongoClientOptions } from 'mongodb';
 
 const connectionPool = new Map<string, MongoClient>();
 
@@ -62,4 +62,8 @@ export async function closeConnections(): Promise<void> {
   } catch (error) {
     console.error('Error during connection cleanup:', error);
   }
+}
+
+export function getCollection(client: MongoClient, dbName: string, collectionName: string, dbOptions?: DbOptions, collectionOptions?: CollectionOptions) {
+  return client.db(dbName, dbOptions).collection(collectionName, collectionOptions);
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { MONGO_RETRIEVER_MODE, mongodb, mongoRetrieverRef } from 'genkitx-mongodb';
+import { mongodb, mongoRetrieverRef } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
 
@@ -23,40 +23,35 @@ const ai = genkit({
     googleAI(),
     mongodb([{
       url: MONGODB_URL,
-      connections: [{
-        dbName: MONGODB_DB_NAME,
-        collectionName: MONGODB_COLLECTION_NAME,
-        retrievers: [{
-            id: 'retriever',
-            mode: MONGO_RETRIEVER_MODE.VECTOR,
-            vector: {
-              embedder: googleAI.embedder('text-embedding-004'),
-              index: "embedding1",
-              path: "embedding1",
-              exact: false,
-              numCandidates: 10,
-              limit: 3,
-            }
-        }]
-      }]
+      retriever: { id: 'retriever' }
     }])
   ]
 });
-
-const retriever = mongoRetrieverRef('retriever');
 
 async function main() {
 
   console.log("Retrieving documents...");
 
   const documents = await ai.retrieve({
-    retriever,
-    query: "The human brain has around 86 billion neurons."
+    retriever: mongoRetrieverRef('retriever'),
+    query: "Reuben",
+    options: {
+      dbName: MONGODB_DB_NAME,
+      collectionName: MONGODB_COLLECTION_NAME,
+      vector: {
+        embedder: googleAI.embedder('text-embedding-004'),
+        index: "item",
+        path: "item",
+        exact: false,
+        numCandidates: 10,
+        limit: 1,
+      }
+    }
   });
 
   console.log('✅ Documents retrieved successfully!');
   for (const document of documents) {
-    console.log(document.data);
+    console.log(document);
   }
 }
 

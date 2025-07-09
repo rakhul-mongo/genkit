@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-export const CONTENT_FIELD = "content";
-export const CONTENT_TYPE_FIELD = "content_type";
-export const EMBEDDING_FIELD = "embedding";
+export const DEFAULT_FIELD_NAME = "embedding";
 
 export const DEFAULT_BATCH_SIZE = 100;
 
@@ -29,10 +27,20 @@ export const MAX_NUM_CANDIDATES = 10000;
 export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 1000;
 
-export enum RETRIEVER_MODE {
-  TEXT = "text",
-  VECTOR = "vector",
-  HYBRID = "hybrid"
-}
+export const CRUD_TOOL_ID = {
+  create: 'create',
+  read: 'read',
+  update: 'update',
+  delete: 'delete',
+};
 
-export const mongoToolRef = (id: string) => `mongodb/${id}`;
+export const SEARCH_INDEX_TOOL_ID = {
+  create: 'create',
+  list: 'list',
+  drop: 'drop',
+};
+
+export const toolRef = (id: string, toolId: string) => `mongodb/${id}/${toolId}`;
+
+export const mongoCrudToolsRefArray = (id: string) => (Object.values(CRUD_TOOL_ID).map(toolId => toolRef(id, toolId)));
+export const mongoSearchIndexToolsRefArray = (id: string) => Object.values(SEARCH_INDEX_TOOL_ID).map(toolId => toolRef(id, toolId));

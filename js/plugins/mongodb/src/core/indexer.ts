@@ -16,19 +16,18 @@
 
 import { Genkit } from 'genkit';
 import { indexerRef, Document } from 'genkit/retriever';
-import { Collection, Document as MongoDocument } from 'mongodb';
-import { CONTENT_FIELD, CONTENT_TYPE_FIELD, EMBEDDING_FIELD, DEFAULT_BATCH_SIZE } from '../common/constants';
-import { IndexerOptions } from '../utils/validation';
-import { retryWithDelay } from '../utils/retry';
+import { Collection, MongoClient, Document as MongoDocument } from 'mongodb';
+import { DEFAULT_FIELD_NAME, DEFAULT_BATCH_SIZE } from '../common/constants';
+import { IndexerDefinition, IndexerOptions, IndexerOptionsSchema, RetryOptions } from '../common/types';
+import { retryWithDelay } from '../common/retry';
+import { getCollection } from '../common/connection';
 
 function createMongoDocuments(
     documents: any[],
     embeddings: any[],
     options: IndexerOptions
 ) {
-    const embeddingField = options.embeddingField ?? EMBEDDING_FIELD;
-    const contentField = options.contentField ?? CONTENT_FIELD;
-    const contentTypeField = options.contentTypeField ?? CONTENT_TYPE_FIELD;
+    const fieldName = options.fieldName ?? DEFAULT_FIELD_NAME;
 
     return documents.flatMap((document, i) => {
       const embeddingDocuments = document.getEmbeddingDocuments(embeddings[i]);
@@ -38,9 +37,9 @@ function createMongoDocuments(
           throw new Error(`Missing embedding for document ${i}, chunk ${j}`);
         }
         return {
-          [embeddingField]: embedding,
-          ...(embeddingDocument.data != null ? { [contentField]: embeddingDocument.data } : {}),
-          ...(embeddingDocument.dataType ? { [contentTypeField]: embeddingDocument.dataType } : {}),
+          [fieldName]: embedding,
+          data: embeddingDocument.data,
+          dataType: embeddingDocument.dataType,
           metadata: embeddingDocument.metadata,
           indexedAt: new Date(),
         };
@@ -57,11 +56,12 @@ async function generateEmbeddings(
       documents.map((document) =>
         ai.embed({
           embedder: options.embedder,
-          content: document,
           options: options.embedderOptions,
+          content: document,
         })
       )
     );
+    // embed many
 }
 
 async function processDocumentBatch(
@@ -69,6 +69,7 @@ async function processDocumentBatch(
   collection: Collection,
   documents: Array<Document>,
   options: IndexerOptions,
+  retryOptions?: RetryOptions,
 ) {
   return retryWithDelay(
     async () => {
@@ -76,40 +77,47 @@ async function processDocumentBatch(
       const mongoDocuments = createMongoDocuments(documents, embeddings, options);
       await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
     },
-    options.retry?.attempts,
-    options.retry?.delay,
-    options.retry?.jitter,
+    retryOptions?.attempts,
+    retryOptions?.delay,
+    retryOptions?.jitter,
   );
 }
 
-export function defineIndexer(
+function configureIndexer(
   ai: Genkit,
-  collection: Collection,
-  options: IndexerOptions
+  client: MongoClient,
+  definition: IndexerDefinition
 ) {
   return ai.defineIndexer(
     {
-      name: `mongodb/${options.id}`
+      name: `mongodb/${definition.id}`,
+      configSchema: IndexerOptionsSchema
     },
-    async (documents: Array<Document>, indexerOptions) => {
+    async (documents: Array<Document>, options: IndexerOptions) => {
 
-      console.log(`Processing ${documents.length} documents for Mongo indexing ${indexerOptions}`);
       const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
 
       try {
 
+        const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
+
         for (let i = 0; i < documents.length; i += batchSize) {
           const batch = documents.slice(i, i + batchSize);
-          await processDocumentBatch(ai, collection, batch, options);
+          await processDocumentBatch(ai, collection, batch, options, definition.retry);
         }
-        console.log(`Successfully indexed ${documents.length} documents`);
 
       } catch (error) {
-        console.error('Error during Mongo indexing:', error);
         throw new Error(`Mongo indexing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   );
+}
+
+export function defineIndexer(ai: Genkit, client: MongoClient, definition?: IndexerDefinition) {
+  if (!definition?.id) {
+    return;
+  }
+  configureIndexer(ai, client, definition);
 }
 
 export function mongoIndexerRef(id: string) {
@@ -117,6 +125,7 @@ export function mongoIndexerRef(id: string) {
     name: `mongodb/${id}`,
     info: {
       label: `Mongo Indexer - ${id}`,
-    }
+    },
+    configSchema: IndexerOptionsSchema
   });
 }
