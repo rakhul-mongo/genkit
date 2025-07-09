@@ -14,22 +14,27 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb } from 'genkitx-mongodb';
+import { mongodb, mongoToolRef } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_TEXT_SEARCH_FIELD_NAME, MONGODB_TEXT_SEARCH_INDEX_NAME, MONGODB_URL, MONGODB_VECTOR_SEARCH_FIELD_NAME, MONGODB_VECTOR_SEARCH_INDEX_NAME, MONGODB_VECTOR_SEARCH_NUM_DIMENSIONS, MONGODB_VECTOR_SEARCH_SIMILARITY } from './config';
+
 
 const ai = genkit({
   plugins: [
     googleAI(),
-    mongodb([
-        {
-          url: MONGODB_URL,
-          dbName: MONGODB_DB_NAME,
-          collectionName: MONGODB_COLLECTION_NAME,
-        },
-      ]
-    ),
-  ],
+    mongodb([{
+      url: MONGODB_URL,
+      connections: [{
+        dbName: MONGODB_DB_NAME,
+        collectionName: MONGODB_COLLECTION_NAME,
+        searchIndexTools: {
+          createId: 'create',
+          readId: 'read',
+          deleteId: 'delete',
+        }
+      }]
+    }])
+  ]
 });
 
 async function createTextSearchIndex() {
@@ -39,9 +44,6 @@ async function createTextSearchIndex() {
     model: googleAI.model('gemini-2.0-flash'),
     prompt: 'Test',
   });
-
-  const toolPrefix = `mongodb/${MONGODB_DB_NAME}/${MONGODB_COLLECTION_NAME}`;
-  console.log(`Using tool prefix: ${toolPrefix}`);
 
   try {
     const { text } = await ai.generate({
@@ -67,8 +69,9 @@ async function createTextSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        `${toolPrefix}/listSearchIndexes`,
-        `${toolPrefix}/createSearchIndex`,
+        mongoToolRef('create'),
+        mongoToolRef('read'),
+        mongoToolRef('delete'),
       ],
       maxTurns: 10,
     });
@@ -88,9 +91,6 @@ async function dropTextSearchIndex() {
     prompt: 'Test',
   });
 
-  const toolPrefix = `mongodb/${MONGODB_DB_NAME}/${MONGODB_COLLECTION_NAME}`;
-  console.log(`Using tool prefix: ${toolPrefix}`);
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
@@ -100,8 +100,9 @@ async function dropTextSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        `${toolPrefix}/dropSearchIndex`,
-        `${toolPrefix}/listSearchIndexes`,
+        mongoToolRef('create'),
+        mongoToolRef('read'),
+        mongoToolRef('delete'),
       ],
       maxTurns: 10,
     });
@@ -120,9 +121,6 @@ async function createVectorSearchIndex() {
     model: googleAI.model('gemini-2.0-flash'),
     prompt: 'Test',
   });
-
-  const toolPrefix = `mongodb/${MONGODB_DB_NAME}/${MONGODB_COLLECTION_NAME}`;
-  console.log(`Using tool prefix: ${toolPrefix}`);
 
   try {
     const { text } = await ai.generate({
@@ -148,8 +146,9 @@ async function createVectorSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        `${toolPrefix}/createSearchIndex`,
-        `${toolPrefix}/listSearchIndexes`,
+        mongoToolRef('create'),
+        mongoToolRef('read'),
+        mongoToolRef('delete'),
       ],
       maxTurns: 10,
     });
@@ -169,9 +168,6 @@ async function dropVectorSearchIndex() {
     prompt: 'Test',
   });
 
-  const toolPrefix = `mongodb/${MONGODB_DB_NAME}/${MONGODB_COLLECTION_NAME}`;
-  console.log(`Using tool prefix: ${toolPrefix}`);
-
   try {
     const { text } = await ai.generate({
       model: googleAI.model('gemini-2.0-flash'),
@@ -181,8 +177,9 @@ async function dropVectorSearchIndex() {
       Please list all indexes.
       `,
       tools: [
-        `${toolPrefix}/dropSearchIndex`,
-        `${toolPrefix}/listSearchIndexes`,
+        mongoToolRef('create'),
+        mongoToolRef('read'),
+        mongoToolRef('delete'),
       ],
       maxTurns: 10,
     });
@@ -194,7 +191,7 @@ async function dropVectorSearchIndex() {
   }
 }
 
-// createTextSearchIndex().catch(console.error);
+createTextSearchIndex().catch(console.error);
 // createVectorSearchIndex().catch(console.error);
 // dropTextSearchIndex().catch(console.error);
 // dropVectorSearchIndex().catch(console.error);

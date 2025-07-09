@@ -19,11 +19,9 @@ export const CONTENT_TYPE_FIELD = "content_type";
 export const EMBEDDING_FIELD = "embedding";
 
 export const DEFAULT_BATCH_SIZE = 100;
-export const MAX_BATCH_SIZE = 1000;
 
-export const RETRY_ATTEMPTS = 3;
+export const RETRY_ATTEMPTS = 0;
 export const BASE_RETRY_DELAY_MS = 1000;
-export const MAX_RETRY_DELAY_MS = 30000;
 export const JITTER_FACTOR = 0.1;
 
 
@@ -31,11 +29,10 @@ export const MAX_NUM_CANDIDATES = 10000;
 export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 1000;
 
-export enum RETRIEVAL_MODE {
+export enum RETRIEVER_MODE {
   TEXT = "text",
   VECTOR = "vector",
   HYBRID = "hybrid"
 }
 
-export const MONGO_IDENTIFIER = (dbName: string, collectionName: string): string =>
-    `mongodb/${dbName}/${collectionName}`;
+export const mongoToolRef = (id: string) => `mongodb/${id}`;

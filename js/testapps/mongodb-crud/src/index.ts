@@ -14,29 +14,32 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb } from 'genkitx-mongodb';
+import { mongodb, mongoToolRef } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
+
 
 const ai = genkit({
   plugins: [
     googleAI(),
-    mongodb([
-        {
-          url: MONGODB_URL,
-          dbName: MONGODB_DB_NAME,
-          collectionName: MONGODB_COLLECTION_NAME,
-        },
-      ]
-    ),
-  ],
+    mongodb([{
+      url: MONGODB_URL,
+      connections: [{
+        dbName: MONGODB_DB_NAME,
+        collectionName: MONGODB_COLLECTION_NAME,
+        crudTools: {
+          createId: 'create',
+          readId: 'read',
+          updateId: 'update',
+          deleteId: 'delete',
+        }
+      }]
+    }])
+  ]
 });
 
 async function main() {
   console.log("Testing MongoDB CRUD tools...");
-
-  const toolPrefix = `mongodb/${MONGODB_DB_NAME}/${MONGODB_COLLECTION_NAME}`;
-  console.log(`Using tool prefix: ${toolPrefix}`);
 
   try {
     const { text } = await ai.generate({
@@ -50,10 +53,10 @@ async function main() {
       `,
       // Now delete the documents with those two ids
       tools: [
-        `${toolPrefix}/insertOne`,
-        `${toolPrefix}/findById`,
-        `${toolPrefix}/updateOneById`,
-        `${toolPrefix}/deleteOneById`,
+        mongoToolRef('create'),
+        mongoToolRef('read'),
+        mongoToolRef('update'),
+        mongoToolRef('delete'),
       ],
       maxTurns: 10,
     });

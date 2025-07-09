@@ -25,15 +25,29 @@ const ai = genkit({
     mongodb([
         {
           url: MONGODB_URL,
-          dbName: MONGODB_DB_NAME,
-          collectionName: MONGODB_COLLECTION_NAME,
-        },
-      ]
-    ),
-  ],
+          connections: [
+            {
+              dbName: MONGODB_DB_NAME,
+              collectionName: MONGODB_COLLECTION_NAME,
+              indexers: [
+                {
+                  id: 'indexer',
+                  embeddingField: 'plot_embedding',
+                  contentField: 'plot',
+                  contentTypeField: 'contentType',
+                  batchSize: 50,
+                  embedder: googleAI.embedder('text-embedding-004'),
+                }
+              ],
+            }
+          ]
+        }
+      ])
+    ]
 });
 
-const indexer = mongoIndexerRef(MONGODB_DB_NAME, MONGODB_COLLECTION_NAME);
+const indexer = mongoIndexerRef('indexer');
+console.log(indexer);
 
 async function main() {
   console.log("Indexing documents...");
@@ -56,14 +70,7 @@ async function main() {
       // Document.fromText('A healthy breakfast includes protein, fiber, and complex carbohydrates.', { id: 'doc14' }),
       // Document.fromText('The Python programming language is popular for data science and automation.', { id: 'doc15' }),
       // test using media
-    ],
-    options: {
-      embedder: googleAI.embedder('text-embedding-004'),
-      embeddingField: "embedding1",
-      contentField: "content1",
-      contentTypeField: "contentType1",
-      batchSize: 50,
-    }
+    ]
   });
 
   console.log('✅ Documents indexed successfully!');

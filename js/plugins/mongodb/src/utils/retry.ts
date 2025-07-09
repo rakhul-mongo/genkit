@@ -14,41 +14,39 @@
  * limitations under the License.
  */
 
-import { BASE_RETRY_DELAY_MS, MAX_RETRY_DELAY_MS, JITTER_FACTOR, RETRY_ATTEMPTS } from './constants';
+import { BASE_RETRY_DELAY_MS, JITTER_FACTOR, RETRY_ATTEMPTS } from '../common/constants';
 
-function calculateBackoffDelay(
+function calculateDelay(
     attempt: number,
     baseDelay: number,
-    maxDelay: number,
     jitterFactor: number
   ): number {
+
     const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
-    const cappedDelay = Math.min(exponentialDelay, maxDelay);
-    const jitterRange = cappedDelay * jitterFactor;
+    const jitterRange = exponentialDelay * jitterFactor;
     const jitter = (Math.random() - 0.5) * 2 * jitterRange;
 
-    return Math.max(0, cappedDelay + jitter);
+    return Math.max(0, exponentialDelay + jitter);
   }
 
-export async function retryWithBackoff<T>(
+export async function retryWithDelay<T>(
   operation: () => Promise<T>,
   retryAttempts: number = RETRY_ATTEMPTS,
   baseDelay: number = BASE_RETRY_DELAY_MS,
-  maxDelay: number = MAX_RETRY_DELAY_MS,
   jitterFactor: number = JITTER_FACTOR
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error = new Error('Unknown error');
 
-  for (let attempt = 1; attempt <= retryAttempts; attempt++) {
+  for (let attempt = 1; attempt <= (retryAttempts + 1); attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt === retryAttempts) {
+      if (attempt === (retryAttempts + 1)) {
         throw lastError;
       }
-      const delay = calculateBackoffDelay(attempt, baseDelay, maxDelay, jitterFactor);
-      console.warn(`Attempt ${attempt} failed: ${lastError.message}. Retrying in ${delay}ms...`);
+      const delay = calculateDelay(attempt, baseDelay, jitterFactor);
+      console.warn(`Attempt ${attempt} failed: ${lastError.message}. Retrying in ${delay}ms`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }

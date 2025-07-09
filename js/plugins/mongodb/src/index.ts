@@ -16,45 +16,61 @@
 
 import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
-import { MongoOptions, MongoConnection, validateMongoOptions } from './validation';
-import { createMongoConnection, cleanupConnections } from './connection';
-import { defineIndexer } from './indexer';
-import { defineRetriever } from './retriever';
-import { defineCRUDTools } from './crud';
-import { defineSearchIndexTools } from './search-indexes';
+import { Options, validateOptions } from './utils/validation';
+import { getMongoClient, closeConnections } from './utils/connection';
+import { defineIndexer } from './core/indexer';
+import { defineRetriever } from './core/retriever';
+import { defineCRUDTools } from './tools/crud';
+import { defineSearchIndexTools } from './tools/search-indexes';
 
 export function mongodb(
-  params: MongoOptions[]
+  params: Options[]
 ): GenkitPlugin {
   return genkitPlugin(
     'mongodb',
     async (ai: Genkit) => {
-      const connections: MongoConnection[] = [];
-
       try {
-        for (const mongoOptions of params) {
+        for (const options of params) {
 
-          validateMongoOptions(mongoOptions);
+          validateOptions(options);
 
-          const connection = await createMongoConnection(mongoOptions);
-          connections.push(connection);
+          const client = await getMongoClient(options.url, options.mongoClientOptions);
 
-          defineIndexer(ai, connection.collection);
-          defineRetriever(ai, connection.collection);
-          defineCRUDTools(ai, connection.collection);
-          defineSearchIndexTools(ai, connection.collection);
+          for (const connection of options.connections) {
+
+            const db = client.db(connection.dbName, connection.dbOptions);
+            const collection = db.collection(connection.collectionName, connection.collectionOptions);
+
+            for (const indexer of connection.indexers ?? []) {
+              defineIndexer(ai, collection, indexer);
+            }
+
+            for (const retriever of connection.retrievers ?? []) {
+              defineRetriever(ai, collection, retriever);
+            }
+
+            if (connection.crudTools) {
+              defineCRUDTools(ai, collection, connection.crudTools);
+            }
+
+            if (connection.searchIndexTools) {
+              defineSearchIndexTools(ai, collection, connection.searchIndexTools);
+            }
+
+          }
         }
       } catch (error) {
-        await cleanupConnections(connections);
+        await closeConnections();
         throw new Error(`Mongo plugin initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   );
 }
 
-export type { MongoOptions, MongoIndexerOptions, MongoRetrieverOptions } from './validation';
-export { mongoIndexerRef } from './indexer';
-export { mongoRetrieverRef } from './retriever';
-export { RETRIEVAL_MODE } from './constants';
+export type { Options as MongoOptions, IndexerOptions as MongoIndexerOptions, RetrieverOptions as MongoRetrieverOptions } from './utils/validation';
+export { mongoIndexerRef } from './core/indexer';
+export { mongoRetrieverRef } from './core/retriever';
+export { mongoToolRef } from './common/constants';
+export { RETRIEVER_MODE as MONGO_RETRIEVER_MODE } from './common/constants';
 
 export default mongodb;

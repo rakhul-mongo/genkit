@@ -17,14 +17,14 @@
 import { Genkit } from 'genkit';
 import { indexerRef, Document } from 'genkit/retriever';
 import { Collection, Document as MongoDocument } from 'mongodb';
-import { CONTENT_FIELD, CONTENT_TYPE_FIELD, EMBEDDING_FIELD, DEFAULT_BATCH_SIZE, MONGO_IDENTIFIER } from './constants';
-import { MongoIndexerOptions, MongoIndexerOptionsSchema, validateMongoIndexerOptions } from './validation';
-import { retryWithBackoff } from './retry';
+import { CONTENT_FIELD, CONTENT_TYPE_FIELD, EMBEDDING_FIELD, DEFAULT_BATCH_SIZE } from '../common/constants';
+import { IndexerOptions } from '../utils/validation';
+import { retryWithDelay } from '../utils/retry';
 
 function createMongoDocuments(
     documents: any[],
     embeddings: any[],
-    options: MongoIndexerOptions
+    options: IndexerOptions
 ) {
     const embeddingField = options.embeddingField ?? EMBEDDING_FIELD;
     const contentField = options.contentField ?? CONTENT_FIELD;
@@ -51,7 +51,7 @@ function createMongoDocuments(
 async function generateEmbeddings(
     ai: Genkit,
     documents: Array<Document>,
-    options: MongoIndexerOptions
+    options: IndexerOptions
 ) {
     return await Promise.all(
       documents.map((document) =>
@@ -68,37 +68,42 @@ async function processDocumentBatch(
   ai: Genkit,
   collection: Collection,
   documents: Array<Document>,
-  options: MongoIndexerOptions,
+  options: IndexerOptions,
 ) {
-  return retryWithBackoff(
+  return retryWithDelay(
     async () => {
       const embeddings = await generateEmbeddings(ai, documents, options);
       const mongoDocuments = createMongoDocuments(documents, embeddings, options);
       await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
     },
+    options.retry?.attempts,
+    options.retry?.delay,
+    options.retry?.jitter,
   );
 }
 
 export function defineIndexer(
   ai: Genkit,
   collection: Collection,
+  options: IndexerOptions
 ) {
   return ai.defineIndexer(
     {
-      name: MONGO_IDENTIFIER(collection.dbName, collection.collectionName),
+      name: `mongodb/${options.id}`
     },
-    async (documents: Array<Document>, options: MongoIndexerOptions) => {
-      console.log(`Processing ${documents.length} documents for Mongo indexing`);
-      validateMongoIndexerOptions(options);
+    async (documents: Array<Document>, indexerOptions) => {
 
+      console.log(`Processing ${documents.length} documents for Mongo indexing ${indexerOptions}`);
       const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
 
       try {
+
         for (let i = 0; i < documents.length; i += batchSize) {
           const batch = documents.slice(i, i + batchSize);
           await processDocumentBatch(ai, collection, batch, options);
         }
         console.log(`Successfully indexed ${documents.length} documents`);
+
       } catch (error) {
         console.error('Error during Mongo indexing:', error);
         throw new Error(`Mongo indexing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -107,13 +112,11 @@ export function defineIndexer(
   );
 }
 
-export function mongoIndexerRef(dbName: string, collectionName: string) {
-  const name = MONGO_IDENTIFIER(dbName, collectionName);
+export function mongoIndexerRef(id: string) {
   return indexerRef({
-    name,
+    name: `mongodb/${id}`,
     info: {
-      label: `Mongo Indexer - ${name}`,
-    },
-    configSchema: MongoIndexerOptionsSchema.optional(),
+      label: `Mongo Indexer - ${id}`,
+    }
   });
 }

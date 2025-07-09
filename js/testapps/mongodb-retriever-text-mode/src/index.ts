@@ -14,25 +14,36 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb, mongoRetrieverRef, RETRIEVAL_MODE } from 'genkitx-mongodb';
+import { mongodb, MONGO_RETRIEVER_MODE, mongoRetrieverRef } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME, MONGODB_URL } from './config';
 
 const ai = genkit({
   plugins: [
     googleAI(),
-    mongodb([
+    mongodb([{
+      url: MONGODB_URL,
+      connections: [
         {
-          url: MONGODB_URL,
           dbName: MONGODB_DB_NAME,
           collectionName: MONGODB_COLLECTION_NAME,
-        },
+          retrievers: [
+            {
+              id: 'retriever',
+              mode: MONGO_RETRIEVER_MODE.TEXT,
+              text: {
+                path: "name",
+                limit: 3,
+              }
+            }
+          ],
+        }
       ]
-    ),
-  ],
+    }])
+    ]
 });
 
-const retriever = mongoRetrieverRef(MONGODB_DB_NAME, MONGODB_COLLECTION_NAME);
+const retriever = mongoRetrieverRef('retriever');
 
 async function main() {
 
@@ -40,15 +51,7 @@ async function main() {
 
   const documents = await ai.retrieve({
     retriever,
-    query: "Tyrell",
-    options: {
-      mode: RETRIEVAL_MODE.TEXT,
-      text: {
-        path: "name",
-        limit: 3,
-      },
-
-    }
+    query: "Tyrell"
   });
 
   console.log('✅ Documents retrieved successfully!');

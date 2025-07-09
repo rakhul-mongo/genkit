@@ -15,11 +15,11 @@
  */
 
 import { retrieverRef, Document } from "genkit/retriever";
-import { EmbedderOptions, HybridSearchOptions, MongoRetrieverOptions, MongoRetrieverOptionsSchema, TextSearchOptions, VectorSearchOptions, validateMongoRetrieverOptions } from "./validation";
-import { DEFAULT_LIMIT, MONGO_IDENTIFIER, RETRIEVAL_MODE } from "./constants";
+import { EmbedderOptions, HybridSearchOptions, RetrieverOptions, RetryOptions, TextSearchOptions, VectorSearchOptions } from "../utils/validation";
+import { DEFAULT_LIMIT, RETRIEVER_MODE } from "../common/constants";
 import { Genkit } from "genkit";
 import { Collection } from "mongodb";
-import { retryWithBackoff } from "./retry";
+import { retryWithDelay } from "../utils/retry";
 
 async function createTextSearchPipeline(query: string, options: TextSearchOptions) {
   return [
@@ -56,11 +56,14 @@ async function createVectorSearchPipeline(queryVector: number[], options: Vector
   ];
 }
 
-async function executeSearchPipeline(collection: Collection, pipeline: any[]) {
-  return retryWithBackoff(
+async function executeSearchPipeline(collection: Collection, pipeline: any[], options: RetryOptions) {
+  return retryWithDelay(
     async () => {
       return await collection.aggregate(pipeline).toArray();
-    }
+    },
+    options?.attempts,
+    options?.delay,
+    options?.jitter,
   );
 }
 
@@ -82,12 +85,12 @@ async function generateEmbeddings(
   });
 }
 
-async function retrieveText(collection: Collection, query: string, options: TextSearchOptions) {
+async function retrieveText(collection: Collection, query: string, options: TextSearchOptions, retryOptions: RetryOptions) {
   console.log(`Executing text search with query: "${query}"`);
 
   try {
     const pipeline = await createTextSearchPipeline(query, options);
-    const results = await executeSearchPipeline(collection, pipeline);
+    const results = await executeSearchPipeline(collection, pipeline, retryOptions);
     const documents = await convertResultsToDocuments(results);
 
     console.log(`Text search returned ${documents.length} documents`);
@@ -98,7 +101,7 @@ async function retrieveText(collection: Collection, query: string, options: Text
   }
 }
 
-async function retrieveVector(ai: Genkit, collection: Collection, document: Document, options: VectorSearchOptions) {
+async function retrieveVector(ai: Genkit, collection: Collection, document: Document, options: VectorSearchOptions, retryOptions: RetryOptions) {
   console.log(`Executing vector search for document`);
 
   try {
@@ -108,7 +111,7 @@ async function retrieveVector(ai: Genkit, collection: Collection, document: Docu
     console.log(`Generated embedding with ${queryVector.length} dimensions`);
 
     const pipeline = await createVectorSearchPipeline(queryVector, options);
-    const results = await executeSearchPipeline(collection, pipeline);
+    const results = await executeSearchPipeline(collection, pipeline, retryOptions);
     const documents = await convertResultsToDocuments(results);
 
     console.log(`Vector search returned ${documents.length} documents`);
@@ -119,7 +122,7 @@ async function retrieveVector(ai: Genkit, collection: Collection, document: Docu
   }
 }
 
-async function retrieveHybrid(ai: Genkit, collection: Collection, document: Document, options: HybridSearchOptions) {
+async function retrieveHybrid(ai: Genkit, collection: Collection, document: Document, options: HybridSearchOptions, retryOptions: RetryOptions) {
   console.log(`Executing hybrid search for document`);
 
   try {
@@ -139,26 +142,28 @@ async function retrieveHybrid(ai: Genkit, collection: Collection, document: Docu
 export function defineRetriever(
   ai: Genkit,
   collection: Collection,
+  options: RetrieverOptions,
 ) {
   return ai.defineRetriever(
     {
-      name: MONGO_IDENTIFIER(collection.dbName, collection.collectionName),
+      name: `mongodb/${options.id}`,
     },
-    async (document: Document, options: MongoRetrieverOptions) => {
+    async (document: Document) => {
       console.log(`Querying Mongo via retriever with mode: ${options.mode}`);
-      validateMongoRetrieverOptions(options);
-
       try {
+        const retryOptions = options.retry ?? {};
+
         switch (options.mode) {
-          case RETRIEVAL_MODE.TEXT:
-            return await retrieveText(collection, document.data, (options as any).text);
-          case RETRIEVAL_MODE.VECTOR:
-            return await retrieveVector(ai, collection, document, (options as any).vector);
-          case RETRIEVAL_MODE.HYBRID:
-            return await retrieveHybrid(ai, collection, document, (options as any).hybrid);
+          case RETRIEVER_MODE.TEXT:
+            return await retrieveText(collection, document.data, options.text, retryOptions);
+          case RETRIEVER_MODE.VECTOR:
+            return await retrieveVector(ai, collection, document, options.vector, retryOptions);
+          case RETRIEVER_MODE.HYBRID:
+            return await retrieveHybrid(ai, collection, document, options.hybrid, retryOptions);
           default:
             throw new Error(`Invalid retrieval mode: ${(options as any).mode}`);
         }
+
       } catch (error) {
         console.error('Error during Mongo retrieval:', error);
         throw new Error(`Mongo retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -167,11 +172,11 @@ export function defineRetriever(
   );
 }
 
-export function mongoRetrieverRef (dbName: string, collectionName: string) {
-    const name = MONGO_IDENTIFIER(dbName, collectionName);
+export function mongoRetrieverRef (id: string) {
     return retrieverRef({
-      name,
-      info: { label: `Mongo Retriever - ${name}` },
-      configSchema: MongoRetrieverOptionsSchema,
+      name: `mongodb/${id}`,
+      info: {
+        label: `Mongo Retriever - ${id}`
+      }
     });
 }

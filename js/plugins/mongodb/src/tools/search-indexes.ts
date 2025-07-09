@@ -17,13 +17,14 @@
 import { Genkit } from 'genkit';
 import { z } from 'genkit';
 import { Collection, SearchIndexDescription } from 'mongodb';
-import { MONGO_IDENTIFIER } from './constants';
-import { retryWithBackoff } from './retry';
+import { retryWithDelay } from '../utils/retry';
+import { SearchIndexToolsOptions } from '../utils/validation';
+import { mongoToolRef } from '../common/constants';
 
-function defineCreateSearchIndexTool(ai: Genkit, collection: Collection) {
+function defineCreateSearchIndexTool(ai: Genkit, collection: Collection, name: string, options: SearchIndexToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/createSearchIndex`,
+      name,
       description: `Create a text search index on the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         name: z.string().describe('Name of the index').optional(),
@@ -39,10 +40,13 @@ function defineCreateSearchIndexTool(ai: Genkit, collection: Collection) {
     async (input: SearchIndexDescription) => {
       console.log(`Creating search index on collection ${collection.collectionName} with keys: ${JSON.stringify(input)}`);
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.createSearchIndex(input);
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Successfully created search index: ${result}`);
@@ -63,10 +67,10 @@ function defineCreateSearchIndexTool(ai: Genkit, collection: Collection) {
   );
 }
 
-function defineListSearchIndexesTool(ai: Genkit, collection: Collection) {
+function defineListSearchIndexesTool(ai: Genkit, collection: Collection, name: string, options: SearchIndexToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/listSearchIndexes`,
+      name,
       description: `List all indexes on the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({}),
       outputSchema: z.object({
@@ -79,10 +83,13 @@ function defineListSearchIndexesTool(ai: Genkit, collection: Collection) {
       console.log(`Listing indexes for collection ${collection.collectionName}`);
 
       try {
-        const indexes = await retryWithBackoff(
+        const indexes = await retryWithDelay(
           async () => {
             return await collection.listSearchIndexes().toArray();
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Found ${indexes.length} indexes`);
@@ -103,10 +110,10 @@ function defineListSearchIndexesTool(ai: Genkit, collection: Collection) {
   );
 }
 
-function defineDropSearchIndexTool(ai: Genkit, collection: Collection) {
+function defineDropSearchIndexTool(ai: Genkit, collection: Collection, name: string, options: SearchIndexToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/dropSearchIndex`,
+      name,
       description: `Drop an index by name from the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         indexName: z.string().describe('Name of the index to drop'),
@@ -120,10 +127,13 @@ function defineDropSearchIndexTool(ai: Genkit, collection: Collection) {
       console.log(`Dropping index ${indexName} from collection ${collection.collectionName}`);
 
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.dropSearchIndex(indexName);
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Successfully dropped index: ${result}`);
@@ -142,8 +152,14 @@ function defineDropSearchIndexTool(ai: Genkit, collection: Collection) {
   );
 }
 
-export function defineSearchIndexTools(ai: Genkit, collection: Collection) {
-  defineCreateSearchIndexTool(ai, collection);
-  defineListSearchIndexesTool(ai, collection);
-  defineDropSearchIndexTool(ai, collection);
+export function defineSearchIndexTools(ai: Genkit, collection: Collection, options: SearchIndexToolsOptions) {
+  if (options.createId) {
+    defineCreateSearchIndexTool(ai, collection, mongoToolRef(options.createId), options);
+  }
+  if (options.readId) {
+    defineListSearchIndexesTool(ai, collection, mongoToolRef(options.readId), options);
+  }
+  if (options.deleteId) {
+    defineDropSearchIndexTool(ai, collection, mongoToolRef(options.deleteId), options);
+  }
 }

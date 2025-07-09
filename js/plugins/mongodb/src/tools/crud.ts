@@ -17,13 +17,14 @@
 import { Genkit } from 'genkit';
 import { z } from 'genkit';
 import { Collection, ObjectId } from 'mongodb';
-import { MONGO_IDENTIFIER } from './constants';
-import { retryWithBackoff } from './retry';
+import { retryWithDelay } from '../utils/retry';
+import { CrudToolsOptions } from '../utils/validation';
+import { mongoToolRef } from '../common/constants';
 
-function defineInsertTool(ai: Genkit, collection: Collection) {
+function defineInsertTool(ai: Genkit, collection: Collection, name: string, options: CrudToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/insertOne`,
+      name,
       description: `Create a new document in the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         document: z.object({}).passthrough().describe('The document data to insert'),
@@ -38,10 +39,13 @@ function defineInsertTool(ai: Genkit, collection: Collection) {
       console.log(`Creating document in collection ${collection.collectionName} with document: ${JSON.stringify(input)}`);
 
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.insertOne(input.document);
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Successfully created document with ID: ${result.insertedId}`);
@@ -63,10 +67,10 @@ function defineInsertTool(ai: Genkit, collection: Collection) {
 }
 
 
-function defineFindByIdTool(ai: Genkit, collection: Collection) {
+function defineFindByIdTool(ai: Genkit, collection: Collection, name: string, options: CrudToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/findById`,
+      name,
       description: `Retrieve a document by its ID from the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to retrieve'),
@@ -81,10 +85,13 @@ function defineFindByIdTool(ai: Genkit, collection: Collection) {
       console.log(`Retrieving document with ID: ${id} from collection ${collection.collectionName}`);
 
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.findOne({ _id: new ObjectId(id) });
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         if (result) {
@@ -114,10 +121,10 @@ function defineFindByIdTool(ai: Genkit, collection: Collection) {
   );
 }
 
-function defineUpdateTool(ai: Genkit, collection: Collection) {
+function defineUpdateTool(ai: Genkit, collection: Collection, name: string, options: CrudToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/updateOneById`,
+      name,
       description: `Update a document by its ID in the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to update'),
@@ -132,18 +139,21 @@ function defineUpdateTool(ai: Genkit, collection: Collection) {
         message: z.string().describe('Operation result message'),
       }),
     },
-    async ({ id, update, options }) => {
+    async ({ id, update, options: updateOptions }) => {
       console.log(`Updating document with ID: ${id} in collection ${collection.collectionName}`);
 
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.updateOne(
               { _id: new ObjectId(id) },
               update,
-              options
+              updateOptions
             );
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Update result - Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
@@ -168,10 +178,10 @@ function defineUpdateTool(ai: Genkit, collection: Collection) {
   );
 }
 
-function defineDeleteTool(ai: Genkit, collection: Collection) {
+function defineDeleteTool(ai: Genkit, collection: Collection, name: string, options: CrudToolsOptions) {
   ai.defineTool(
     {
-      name: `${MONGO_IDENTIFIER(collection.dbName, collection.collectionName)}/deleteOneById`,
+      name,
       description: `Delete a document by its ID from the MongoDB collection ${collection.collectionName}`,
       inputSchema: z.object({
         id: z.string().describe('The document ID to delete'),
@@ -186,10 +196,13 @@ function defineDeleteTool(ai: Genkit, collection: Collection) {
       console.log(`Deleting document with ID: ${id} from collection ${collection.collectionName}`);
 
       try {
-        const result = await retryWithBackoff(
+        const result = await retryWithDelay(
           async () => {
             return await collection.deleteOne({ _id: new ObjectId(id) });
-          }
+          },
+          options.retry?.attempts,
+          options.retry?.delay,
+          options.retry?.jitter,
         );
 
         console.log(`Delete result - Deleted: ${result.deletedCount} documents`);
@@ -210,9 +223,17 @@ function defineDeleteTool(ai: Genkit, collection: Collection) {
   );
 }
 
-export function defineCRUDTools(ai: Genkit, collection: Collection) {
-  defineInsertTool(ai, collection);
-  defineFindByIdTool(ai, collection);
-  defineUpdateTool(ai, collection);
-  defineDeleteTool(ai, collection);
+export function defineCRUDTools(ai: Genkit, collection: Collection, options: CrudToolsOptions) {
+  if (options.createId) {
+    defineInsertTool(ai, collection, mongoToolRef(options.createId), options);
+  }
+  if (options.readId) {
+    defineFindByIdTool(ai, collection, mongoToolRef(options.readId), options);
+  }
+  if (options.updateId) {
+    defineUpdateTool(ai, collection, mongoToolRef(options.updateId), options);
+  }
+  if (options.deleteId) {
+    defineDeleteTool(ai, collection, mongoToolRef(options.deleteId), options);
+  }
 }
