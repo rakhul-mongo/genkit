@@ -15,11 +15,11 @@
  */
 
 import { Document, z } from 'genkit';
-import { ai } from '../genkit.js';
-import { AnswerOutputSchema, MenuItem, MenuItemSchema, MenuQuestionInputSchema } from '../types.js';
+import { ai } from '../common/genkit.js';
+import { AnswerOutputSchema, MenuItem, MenuItemSchema, QuestionInputSchema } from '../common/types.js';
 import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
-import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME } from '../config.js';
-import { menuPrompt } from './prompts.js';
+import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME } from '../common/config.js';
+import { menuPrompt } from './core-prompts.js';
 import { googleAI } from '@genkit-ai/googleai';
 
 const embedder = googleAI.embedder('text-embedding-004');
@@ -54,7 +54,7 @@ export const menuIndexerFlow = ai.defineFlow(
 export const menuRetrieveVectorFlow = ai.defineFlow(
   {
     name: 'menuRetrieveVectorFlow',
-    inputSchema: MenuQuestionInputSchema,
+    inputSchema: QuestionInputSchema,
     outputSchema: AnswerOutputSchema,
   },
   async (input) => {
@@ -90,7 +90,7 @@ export const menuRetrieveVectorFlow = ai.defineFlow(
 export const menuRetrieveTextFlow = ai.defineFlow(
   {
     name: 'menuRetrieveTextFlow',
-    inputSchema: MenuQuestionInputSchema,
+    inputSchema: QuestionInputSchema,
     outputSchema: AnswerOutputSchema,
   },
   async (input) => {

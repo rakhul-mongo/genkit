@@ -17,11 +17,11 @@
 import { Genkit } from 'genkit';
 import { MongoClient, ObjectId } from 'mongodb';
 import { retryWithDelay } from '../common/retry';
-import { CrudToolsDefinition, InputCreateSchema, InputDeleteSchema, InputReadSchema, InputUpdateSchema, OutputCreateSchema, OutputDeleteSchema, OutputReadSchema, OutputUpdateSchema } from '../common/types';
+import { BaseDefinition, InputCreateSchema, InputDeleteSchema, InputReadSchema, InputUpdateSchema, OutputCreateSchema, OutputDeleteSchema, OutputReadSchema, OutputUpdateSchema, validateCreateOptions, validateDeleteOptions, validateReadOptions, validateUpdateOptions } from '../common/types';
 import { CRUD_TOOL_ID, toolRef } from '../common/constants';
 import { getCollection } from '../common/connection';
 
-function configureInsertTool(ai: Genkit, client: MongoClient, options: CrudToolsDefinition) {
+function configureInsertTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.create),
@@ -32,15 +32,13 @@ function configureInsertTool(ai: Genkit, client: MongoClient, options: CrudTools
     async (input) => {
       try {
 
+        validateCreateOptions(input);
+
         const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
 
         const result = await retryWithDelay(
-          async () => {
-            return await collection.insertOne(input.document);
-          },
-          options.retry?.attempts,
-          options.retry?.delay,
-          options.retry?.jitter,
+          async () => await collection.insertOne(input.document),
+          options.retry
         );
 
         return {
@@ -60,7 +58,7 @@ function configureInsertTool(ai: Genkit, client: MongoClient, options: CrudTools
 }
 
 
-function configureFindByIdTool(ai: Genkit, client: MongoClient, options: CrudToolsDefinition) {
+function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.read),
@@ -69,17 +67,15 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: CrudToo
       outputSchema: OutputReadSchema,
     },
     async (input) => {
-
-      const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
-
       try {
+
+        validateReadOptions(input);
+
+        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+
         const result = await retryWithDelay(
-          async () => {
-            return await collection.findOne({ _id: new ObjectId(input.id) });
-          },
-          options.retry?.attempts,
-          options.retry?.delay,
-          options.retry?.jitter,
+          async () => await collection.findOne({ _id: new ObjectId(input.id) }),
+          options.retry
         );
 
         if (result) {
@@ -95,6 +91,7 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: CrudToo
             message: `Document with ID ${input.id} not found`,
           };
         }
+
       } catch (error) {
         return {
           document: null,
@@ -106,7 +103,7 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: CrudToo
   );
 }
 
-function configureUpdateTool(ai: Genkit, client: MongoClient, options: CrudToolsDefinition) {
+function configureUpdateTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.update),
@@ -115,21 +112,19 @@ function configureUpdateTool(ai: Genkit, client: MongoClient, options: CrudTools
       outputSchema: OutputUpdateSchema,
     },
     async (input) => {
-
-      const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
-
       try {
+
+        validateUpdateOptions(input);
+
+        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+
         const result = await retryWithDelay(
-          async () => {
-            return await collection.updateOne(
-              { _id: new ObjectId(input.id) },
-              input.update,
-              input.options
-            );
-          },
-          options.retry?.attempts,
-          options.retry?.delay,
-          options.retry?.jitter,
+          async () => await collection.updateOne(
+            { _id: new ObjectId(input.id) },
+            input.update,
+            input.options
+          ),
+          options.retry
         );
 
         return {
@@ -152,7 +147,7 @@ function configureUpdateTool(ai: Genkit, client: MongoClient, options: CrudTools
   );
 }
 
-function configureDeleteTool(ai: Genkit, client: MongoClient, options: CrudToolsDefinition) {
+function configureDeleteTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.delete),
@@ -161,17 +156,15 @@ function configureDeleteTool(ai: Genkit, client: MongoClient, options: CrudTools
       outputSchema: OutputDeleteSchema,
     },
     async (input) => {
-
-      const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
-
       try {
+
+        validateDeleteOptions(input);
+
+        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+
         const result = await retryWithDelay(
-          async () => {
-            return await collection.deleteOne({ _id: new ObjectId(input.id) });
-          },
-          options.retry?.attempts,
-          options.retry?.delay,
-          options.retry?.jitter,
+          async () => await collection.deleteOne({ _id: new ObjectId(input.id) }),
+          options.retry
         );
 
         return {
@@ -190,7 +183,7 @@ function configureDeleteTool(ai: Genkit, client: MongoClient, options: CrudTools
   );
 }
 
-export function defineCRUDTools(ai: Genkit, client: MongoClient, definition?: CrudToolsDefinition) {
+export function defineCRUDTools(ai: Genkit, client: MongoClient, definition?: BaseDefinition) {
   if (!definition?.id) {
     return;
   }

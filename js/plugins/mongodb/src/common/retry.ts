@@ -15,6 +15,7 @@
  */
 
 import { BASE_RETRY_DELAY_MS, JITTER_FACTOR, RETRY_ATTEMPTS } from '../common/constants';
+import { RetryOptions } from './types';
 
 function calculateDelay(
     attempt: number,
@@ -31,10 +32,13 @@ function calculateDelay(
 
 export async function retryWithDelay<T>(
   operation: () => Promise<T>,
-  retryAttempts: number = RETRY_ATTEMPTS,
-  baseDelay: number = BASE_RETRY_DELAY_MS,
-  jitterFactor: number = JITTER_FACTOR
+  retryOptions?: RetryOptions
 ): Promise<T> {
+
+  const retryAttempts = retryOptions?.retryAttempts ?? RETRY_ATTEMPTS;
+  const baseDelay = retryOptions?.baseDelay ?? BASE_RETRY_DELAY_MS;
+  const jitterFactor = retryOptions?.jitterFactor ?? JITTER_FACTOR;
+
   let lastError: Error = new Error('Unknown error');
 
   for (let attempt = 1; attempt <= (retryAttempts + 1); attempt++) {

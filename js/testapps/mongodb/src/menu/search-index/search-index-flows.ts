@@ -13,9 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { config } from 'dotenv';
-config();
 
-export const MONGODB_URL = process.env.MONGODB_URL!;
-export const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME!;
-export const MONGODB_COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME!;
+import { ai } from '../common/genkit.js';
+import { AnswerOutputSchema, QuestionInputSchema } from '../common/types.js';
+import { searchIndexPrompt } from './search-index-prompts.js';
+
+export const conversationalSearchIndexFlow = ai.defineFlow(
+  {
+    name: 'conversationalSearchIndexFlow',
+    inputSchema: QuestionInputSchema,
+    outputSchema: AnswerOutputSchema,
+  },
+  async (input) => {
+    const response = await searchIndexPrompt(input);
+    return {
+      answer: response.text
+    };
+  }
+);

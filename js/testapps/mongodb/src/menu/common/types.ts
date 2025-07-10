@@ -26,7 +26,7 @@ export const MenuItemSchema = z.object({
 
 export type MenuItem = z.infer<typeof MenuItemSchema>;
 
-export const MenuQuestionInputSchema = z.object({
+export const QuestionInputSchema = z.object({
   question: z.string(),
 });
 
@@ -39,16 +39,6 @@ export const DataMenuQuestionInputSchema = z.object({
   question: z.string(),
 });
 
-export const MenuCRUDToolsInputSchema = z.object({
-  action: z.enum(['read', 'create', 'update', 'delete']),
-  dbName: z.string(),
-  collectionName: z.string(),
-  id: z.string().optional(),
-  document: z.record(z.any()).optional(),
-  update: z.record(z.any()).optional(),
-});
-
-// Also export Typescript types for each of these Zod schemas
-export type MenuQuestionInput = z.infer<typeof MenuQuestionInputSchema>;
+export type QuestionInput = z.infer<typeof QuestionInputSchema>;
 export type AnswerOutput = z.infer<typeof AnswerOutputSchema>;
 export type DataMenuPromptInput = z.infer<typeof DataMenuQuestionInputSchema>;

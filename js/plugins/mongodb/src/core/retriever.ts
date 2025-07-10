@@ -15,7 +15,7 @@
  */
 
 import { retrieverRef, Document } from "genkit/retriever";
-import { EmbedderOptions, HybridSearchOptions, RetrieverDefinition, RetrieverOptions, RetrieverOptionsSchema, RetryOptions, TextSearchOptions, VectorSearchOptions } from "../common/types";
+import { BaseDefinition, EmbedderOptions, HybridSearchOptions, RetrieverOptions, RetrieverOptionsSchema, RetryOptions, TextSearchOptions, validateRetrieverOptions, VectorSearchOptions } from "../common/types";
 import { DEFAULT_LIMIT } from "../common/constants";
 import { Genkit } from "genkit";
 import { Collection, MongoClient, Document as MongoDocument } from "mongodb";
@@ -64,9 +64,7 @@ async function executeSearchPipeline(collection: Collection, pipeline: any[], re
     async () => {
       return await collection.aggregate(pipeline).toArray();
     },
-    retryOptions?.attempts,
-    retryOptions?.delay,
-    retryOptions?.jitter,
+    retryOptions
   );
 }
 
@@ -131,7 +129,7 @@ async function retrieveHybrid(ai: Genkit, collection: Collection, document: Docu
 function configureRetriever(
   ai: Genkit,
   client: MongoClient,
-  definition: RetrieverDefinition,
+  definition: BaseDefinition,
 ) {
   return ai.defineRetriever(
     {
@@ -140,6 +138,9 @@ function configureRetriever(
     },
     async (document: Document, options: RetrieverOptions) => {
       try {
+
+        validateRetrieverOptions(options);
+
         const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
 
         if ('text' in options && options.text) {
@@ -163,7 +164,7 @@ function configureRetriever(
   );
 }
 
-export function defineRetriever(ai: Genkit, client: MongoClient, definition?: RetrieverDefinition) {
+export function defineRetriever(ai: Genkit, client: MongoClient, definition?: BaseDefinition) {
   if (!definition?.id) {
     return;
   }

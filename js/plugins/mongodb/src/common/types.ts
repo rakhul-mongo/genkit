@@ -22,9 +22,9 @@ import { CollectionOptions, DbOptions, MongoClientOptions } from 'mongodb';
 export type EmbedderCustomOptions = z.ZodTypeAny;
 
 const RetryOptionsSchema = z.object({
-  attempts: z.number().int().positive().optional(),
-  delay: z.number().int().positive().optional(),
-  jitter: z.number().int().positive().optional(),
+  retryAttempts: z.number().int().positive().optional(),
+  baseDelay: z.number().int().positive().optional(),
+  jitterFactor: z.number().int().positive().optional(),
 });
 
 export type RetryOptions = z.infer<typeof RetryOptionsSchema>;
@@ -36,10 +36,6 @@ const EmbedderOptionsSchema = z.object({
 
 export type EmbedderOptions = z.infer<typeof EmbedderOptionsSchema>;
 
-const BaseDefinitionSchema = z.object({
-  id: z.string().min(1, 'ID is required'),
-  retry: RetryOptionsSchema.optional(),
-});
 
 const DatabaseCollectionSchema = z.object({
   dbName: z.string().min(1, 'Database name is required'),
@@ -50,10 +46,6 @@ const DatabaseCollectionSchema = z.object({
 
 // Indexer
 
-export const IndexerDefinitionSchema = BaseDefinitionSchema;
-
-export type IndexerDefinition = z.infer<typeof IndexerDefinitionSchema>;
-
 export const IndexerOptionsSchema = DatabaseCollectionSchema.and(EmbedderOptionsSchema).and(z.object({
   fieldName: z.string().min(1).optional(),
   batchSize: z.number().int().positive().optional(),
@@ -61,11 +53,15 @@ export const IndexerOptionsSchema = DatabaseCollectionSchema.and(EmbedderOptions
 
 export type IndexerOptions = z.infer<typeof IndexerOptionsSchema>;
 
+export function validateIndexerOptions(options: IndexerOptions) {
+  try {
+    IndexerOptionsSchema.parse(options);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo indexer options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
+
 // Retriever
-
-export const RetrieverDefinitionSchema = BaseDefinitionSchema;
-
-export type RetrieverDefinition = z.infer<typeof RetrieverDefinitionSchema>;
 
 const TextSearchSchema = z.object({
   index: z.string().min(1, 'Index is required'),
@@ -114,11 +110,14 @@ export const RetrieverOptionsSchema = DatabaseCollectionSchema.and(z.union([
 
 export type RetrieverOptions = z.infer<typeof RetrieverOptionsSchema>;
 
+export function validateRetrieverOptions(options: RetrieverOptions) {
+  try {
+    RetrieverOptionsSchema.parse(options);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
 // Crud
-
-const CrudToolsDefinitionSchema = BaseDefinitionSchema;
-
-export type CrudToolsDefinition = z.infer<typeof CrudToolsDefinitionSchema>;
 
 export const InputCreateSchema = z.object({
   dbName: z.string().describe('The name of the database to use'),
@@ -127,6 +126,16 @@ export const InputCreateSchema = z.object({
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
   document: z.object({}).passthrough().describe('The document data to insert'),
 });
+
+export type InputCreate = z.infer<typeof InputCreateSchema>;
+
+export function validateCreateOptions(input: InputCreate) {
+  try {
+    InputCreateSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
 
 export const OutputCreateSchema = z.object({
   insertedId: z.string().describe('The ID of the inserted document'),
@@ -142,6 +151,15 @@ export const InputReadSchema = z.object({
   id: z.string().describe('The document ID to retrieve'),
 });
 
+export type InputRead = z.infer<typeof InputReadSchema>;
+
+export function validateReadOptions(input: InputRead) {
+  try {
+    InputReadSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
 export const OutputReadSchema = z.object({
   document: z.record(z.any()).nullable().describe('The retrieved document or null if not found'),
   success: z.boolean().describe('Whether the operation was successful'),
@@ -158,6 +176,15 @@ export const InputUpdateSchema = z.object({
   options: z.object({}).passthrough().describe('The MongoDB update options to apply').optional(),
 });
 
+export type InputUpdate = z.infer<typeof InputUpdateSchema>;
+
+export function validateUpdateOptions(input: InputUpdate) {
+  try {
+    InputUpdateSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
 export const OutputUpdateSchema = z.object({
   matchedCount: z.number().describe('Number of documents that matched the filter'),
   modifiedCount: z.number().describe('Number of documents that were modified'),
@@ -174,18 +201,23 @@ export const InputDeleteSchema = z.object({
   id: z.string().describe('The document ID to delete'),
 });
 
+export type InputDelete = z.infer<typeof InputDeleteSchema>;
+
+export function validateDeleteOptions(input: InputDelete) {
+  try {
+    InputDeleteSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
+
 export const OutputDeleteSchema = z.object({
   deletedCount: z.number().describe('Number of documents that were deleted'),
   success: z.boolean().describe('Whether the operation was successful'),
   message: z.string().describe('Operation result message'),
 });
 
-
 // Search Index
-
-const SearchIndexToolsDefinitionSchema = BaseDefinitionSchema;
-
-export type SearchIndexToolsDefinition = z.infer<typeof SearchIndexToolsDefinitionSchema>;
 
 export const InputSearchIndexCreateSchema = z.object({
   dbName: z.string().describe('The name of the database to use'),
@@ -199,6 +231,16 @@ export const InputSearchIndexCreateSchema = z.object({
   }).describe('The index schema'),
 });
 
+export type InputSearchIndexCreate = z.infer<typeof InputSearchIndexCreateSchema>;
+
+export function validateSearchIndexCreateOptions(input: InputSearchIndexCreate) {
+  try {
+    InputSearchIndexCreateSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
+
 export const OutputSearchIndexCreateSchema =z.object({
   indexName: z.string().describe('Name of the created index'),
   success: z.boolean().describe('Whether the operation was successful'),
@@ -211,6 +253,16 @@ export const InputSearchIndexListSchema = z.object({
   collectionName: z.string().describe('The name of the collection to use'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
 });
+
+export type InputSearchIndexList = z.infer<typeof InputSearchIndexListSchema>;
+
+export function validateSearchIndexListOptions(input: InputSearchIndexList) {
+  try {
+    InputSearchIndexListSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
 
 export const OutputSearchIndexListSchema = z.object({
   indexes: z.array(z.record(z.any())).describe('Array of index definitions'),
@@ -226,20 +278,38 @@ export const InputSearchIndexDropSchema = z.object({
   indexName: z.string().describe('Name of the index to drop'),
 });
 
+export type InputSearchIndexDrop = z.infer<typeof InputSearchIndexDropSchema>;
+
+export function validateSearchIndexDropOptions(input: InputSearchIndexDrop) {
+  try {
+    InputSearchIndexDropSchema.parse(input);
+  } catch (validationError) {
+    throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
+  }
+}
+
 export const OutputSearchIndexDropSchema = z.object({
   success: z.boolean().describe('Whether the operation was successful'),
   message: z.string().describe('Operation result message'),
 });
 
-  // Conection Definition
+  // Definition
+
+
+const BaseDefinitionSchema = z.object({
+  id: z.string().min(1, 'ID is required'),
+  retry: RetryOptionsSchema.optional(),
+});
+
+export type BaseDefinition = z.infer<typeof BaseDefinitionSchema>;
 
 export const ConnectionDefinitionSchema = z.object({
   url: z.string().url('Invalid  URL'),
   mongoClientOptions: (z.any() as z.ZodType<MongoClientOptions>).optional(),
-  indexer: IndexerDefinitionSchema.optional(),
-  retriever: RetrieverDefinitionSchema.optional(),
-  crudTools: CrudToolsDefinitionSchema.optional(),
-  searchIndexTools: SearchIndexToolsDefinitionSchema.optional(),
+  indexer: BaseDefinitionSchema.optional(),
+  retriever: BaseDefinitionSchema.optional(),
+  crudTools: BaseDefinitionSchema.optional(),
+  searchIndexTools: BaseDefinitionSchema.optional(),
 }).refine(
   (data) => {
     return (

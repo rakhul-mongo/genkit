@@ -18,7 +18,7 @@ import { Genkit } from 'genkit';
 import { indexerRef, Document } from 'genkit/retriever';
 import { Collection, MongoClient, Document as MongoDocument } from 'mongodb';
 import { DEFAULT_FIELD_NAME, DEFAULT_BATCH_SIZE } from '../common/constants';
-import { IndexerDefinition, IndexerOptions, IndexerOptionsSchema, RetryOptions } from '../common/types';
+import { BaseDefinition, IndexerOptions, IndexerOptionsSchema, RetryOptions, validateIndexerOptions } from '../common/types';
 import { retryWithDelay } from '../common/retry';
 import { getCollection } from '../common/connection';
 
@@ -52,17 +52,17 @@ async function generateEmbeddings(
     documents: Array<Document>,
     options: IndexerOptions
 ) {
-    return await Promise.all(
-      documents.map((document) =>
-        ai.embed({
-          embedder: options.embedder,
-          options: options.embedderOptions,
-          content: document,
-        })
-      )
-    );
-    // embed many
+  return await Promise.all(
+    documents.map((document) =>
+      ai.embed({
+        embedder: options.embedder,
+        options: options.embedderOptions,
+        content: document,
+      })
+    )
+  );
 }
+
 
 async function processDocumentBatch(
   ai: Genkit,
@@ -77,16 +77,14 @@ async function processDocumentBatch(
       const mongoDocuments = createMongoDocuments(documents, embeddings, options);
       await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
     },
-    retryOptions?.attempts,
-    retryOptions?.delay,
-    retryOptions?.jitter,
+    retryOptions
   );
 }
 
 function configureIndexer(
   ai: Genkit,
   client: MongoClient,
-  definition: IndexerDefinition
+  definition: BaseDefinition
 ) {
   return ai.defineIndexer(
     {
@@ -94,11 +92,11 @@ function configureIndexer(
       configSchema: IndexerOptionsSchema
     },
     async (documents: Array<Document>, options: IndexerOptions) => {
-
-      const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
-
       try {
 
+        validateIndexerOptions(options);
+
+        const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
         const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
 
         for (let i = 0; i < documents.length; i += batchSize) {
@@ -113,7 +111,7 @@ function configureIndexer(
   );
 }
 
-export function defineIndexer(ai: Genkit, client: MongoClient, definition?: IndexerDefinition) {
+export function defineIndexer(ai: Genkit, client: MongoClient, definition?: BaseDefinition) {
   if (!definition?.id) {
     return;
   }

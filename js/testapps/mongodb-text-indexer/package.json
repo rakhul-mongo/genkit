@@ -1,5 +1,5 @@
 {
-  "name": "mongodb-retriever-text-mode",
+  "name": "mongodb-text-indexer",
   "version": "1.0.0",
   "main": "./lib/src/index.js",
   "scripts": {

@@ -52,15 +52,8 @@ export function mongodb(
 
 export type {
   ConnectionDefinition as MongoConnectionDefinition,
-  IndexerDefinition as MongoIndexerDefinition,
-  RetrieverDefinition as MongoRetrieverDefinition,
-  CrudToolsDefinition as MongoCrudToolsDefinition,
-  SearchIndexToolsDefinition as MongoSearchIndexToolsDefinition,
   RetrieverOptions as MongoRetrieverOptions,
   IndexerOptions as MongoIndexerOptions,
-  TextSearchOptions as MongoTextSearchOptions,
-  VectorSearchOptions as MongoVectorSearchOptions,
-  HybridSearchOptions as MongoHybridSearchOptions,
 } from './common/types';
 export { mongoIndexerRef } from './core/indexer';
 export { mongoRetrieverRef } from './core/retriever';

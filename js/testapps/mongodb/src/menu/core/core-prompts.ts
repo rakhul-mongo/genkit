@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { ai } from '../genkit.js';
-import { DataMenuQuestionInputSchema } from '../types.js';
+import { ai } from '../common/genkit.js';
+import { DataMenuQuestionInputSchema } from '../common/types.js';
 import { googleAI } from '@genkit-ai/googleai';
 
 export const menuPrompt = ai.definePrompt({
@@ -23,7 +23,7 @@ export const menuPrompt = ai.definePrompt({
   model: googleAI.model('gemini-2.5-flash'),
   input: { schema: DataMenuQuestionInputSchema },
   output: { format: 'text' },
-  config: { temperature: 0.3 },
+  config: { temperature: 0.1 },
   messages: `
     You are acting as Walt, a helpful AI assistant here at the restaurant.
     You can answer questions about the food on the menu or any other questions
