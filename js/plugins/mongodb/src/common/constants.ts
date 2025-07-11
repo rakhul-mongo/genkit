@@ -24,8 +24,6 @@ export const JITTER_FACTOR = 0.1;
 
 
 export const MAX_NUM_CANDIDATES = 10000;
-export const DEFAULT_LIMIT = 50;
-export const MAX_LIMIT = 1000;
 
 export const CRUD_TOOL_ID = {
   create: 'create',

@@ -34,15 +34,20 @@ async function main() {
 
   try {
     const { text } = await ai.generate({
-      model: googleAI.model('gemini-1.5-flash'),
+      model: googleAI.model('gemini-2.5-flash'),
       prompt: `
       Using the available tools,
       For the following database: ${MONGODB_DB_NAME} and collection: ${MONGODB_COLLECTION_NAME}
       Please insert a new document with {"name": "John Doe", "email": "john.doe@example.com", "age": 50}.
-      With the insertedId, find the document by id and return the document.
       Now update the document with the inserted id to update: {$set: {age: 12}} using the available tool.
-      Also update the document with the id as "686b48d887a2f1c12113a16d" to update: {$set: {name: "bob"}} and options: {upsert: true} using the available tool.
+      With the id of the document, find the document by id and return the document.
+      Also, Update a new document with the id as "686b48d887a2f1c12113a16d" to update: {$set: {name: "bob"}} and options: {upsert: true} using the available tool.
+      Now delete the documents with those two ids
       `,
+      // Please insert a new document with {"name": "John Doe", "email": "john.doe@example.com", "age": 50}.
+      // Now update the document with the inserted id to update: {$set: {age: 12}} using the available tool.
+      // With the insertedId, find the document by id and return the document.
+      // Also update the document with the id as "686b48d887a2f1c12113a16d" to update: {$set: {name: "bob"}} and options: {upsert: true} using the available tool.
       // Now delete the documents with those two ids
       tools: [
         ...mongoCrudToolsRefArray('crud'),

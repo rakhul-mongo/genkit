@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-import { CollectionOptions, DbOptions, MongoClient, MongoClientOptions } from 'mongodb';
+import { Collection, CollectionOptions, DbOptions, MongoClient, MongoClientOptions } from 'mongodb';
 
 const connectionPool = new Map<string, MongoClient>();
 
-const createConnectionKey = function (url: string, options?: MongoClientOptions): string {
-  return JSON.stringify({
+const createConnectionKey = (
+  url: string,
+  options?: MongoClientOptions,
+): string =>
+  JSON.stringify({
     url,
     options: options || {},
   });
-};
 
 async function closeMongoClient(client: MongoClient): Promise<void> {
   try {
@@ -44,7 +46,6 @@ export async function getMongoClient(url: string, options?: MongoClientOptions):
     const client = new MongoClient(url, options);
     await client.connect();
 
-
     connectionPool.set(connectionKey, client);
 
     return client;
@@ -64,6 +65,12 @@ export async function closeConnections(): Promise<void> {
   }
 }
 
-export function getCollection(client: MongoClient, dbName: string, collectionName: string, dbOptions?: DbOptions, collectionOptions?: CollectionOptions) {
+export function getCollection(
+  client: MongoClient,
+  dbName: string,
+  collectionName: string,
+  dbOptions?: DbOptions,
+  collectionOptions?: CollectionOptions,
+): Collection {
   return client.db(dbName, dbOptions).collection(collectionName, collectionOptions);
 }

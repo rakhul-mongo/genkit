@@ -14,44 +14,19 @@
  * limitations under the License.
  */
 
-import { Genkit } from 'genkit';
+import { Embedding, Genkit } from 'genkit';
 import { indexerRef, Document } from 'genkit/retriever';
-import { Collection, MongoClient, Document as MongoDocument } from 'mongodb';
+import { Collection, InsertManyResult, MongoClient, Document as MongoDocument } from 'mongodb';
 import { DEFAULT_FIELD_NAME, DEFAULT_BATCH_SIZE } from '../common/constants';
 import { BaseDefinition, IndexerOptions, IndexerOptionsSchema, RetryOptions, validateIndexerOptions } from '../common/types';
 import { retryWithDelay } from '../common/retry';
 import { getCollection } from '../common/connection';
 
-function createMongoDocuments(
-    documents: any[],
-    embeddings: any[],
-    options: IndexerOptions
-) {
-    const fieldName = options.fieldName ?? DEFAULT_FIELD_NAME;
-
-    return documents.flatMap((document, i) => {
-      const embeddingDocuments = document.getEmbeddingDocuments(embeddings[i]);
-      return embeddingDocuments.map((embeddingDocument: any, j: number) => {
-        const embedding = embeddings[i][j]?.embedding;
-        if (!embedding) {
-          throw new Error(`Missing embedding for document ${i}, chunk ${j}`);
-        }
-        return {
-          [fieldName]: embedding,
-          data: embeddingDocument.data,
-          dataType: embeddingDocument.dataType,
-          metadata: embeddingDocument.metadata,
-          indexedAt: new Date(),
-        };
-      });
-    });
-}
-
 async function generateEmbeddings(
     ai: Genkit,
     documents: Array<Document>,
     options: IndexerOptions
-) {
+): Promise<Array<Array<Embedding>>> {
   return await Promise.all(
     documents.map((document) =>
       ai.embed({
@@ -63,6 +38,30 @@ async function generateEmbeddings(
   );
 }
 
+function createMongoDocuments(
+  documents: Array<Document>,
+  embeddings: Array<Array<Embedding>>,
+  options: IndexerOptions
+): Array<MongoDocument> {
+  const fieldName = options.fieldName ?? DEFAULT_FIELD_NAME;
+
+  return documents.flatMap((document, documentIndex) => {
+    const embeddingDocuments: Array<Document> = document.getEmbeddingDocuments(embeddings[documentIndex]);
+    return embeddingDocuments.map((embeddingDocument: Document, embeddingDocumentIndex: number) => {
+      const embedding = embeddings[documentIndex][embeddingDocumentIndex]?.embedding;
+      if (!embedding) {
+        throw new Error(`Missing embedding for document ${documentIndex}, chunk ${embeddingDocumentIndex}`);
+      }
+      return {
+        [fieldName]: embedding,
+        data: embeddingDocument.data,
+        dataType: embeddingDocument.dataType,
+        metadata: embeddingDocument.metadata,
+        indexedAt: new Date(),
+      };
+    });
+  });
+}
 
 async function processDocumentBatch(
   ai: Genkit,
@@ -70,15 +69,28 @@ async function processDocumentBatch(
   documents: Array<Document>,
   options: IndexerOptions,
   retryOptions?: RetryOptions,
-) {
+): Promise<InsertManyResult<MongoDocument>> {
   return retryWithDelay(
     async () => {
       const embeddings = await generateEmbeddings(ai, documents, options);
       const mongoDocuments = createMongoDocuments(documents, embeddings, options);
-      await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
+      return await collection.insertMany(mongoDocuments as Array<MongoDocument>, { ordered: false });
     },
     retryOptions
   );
+}
+
+async function index(ai: Genkit, collection: Collection, documents: Array<Document>, options: IndexerOptions, retryOptions?: RetryOptions) {
+
+  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  const batchPromises: Array<Promise<InsertManyResult<MongoDocument>>> = [];
+
+  for (let i = 0; i < documents.length; i += batchSize) {
+    const batch = documents.slice(i, i + batchSize);
+    batchPromises.push(processDocumentBatch(ai, collection, batch, options, retryOptions));
+  }
+
+  await Promise.all(batchPromises);
 }
 
 function configureIndexer(
@@ -96,13 +108,9 @@ function configureIndexer(
 
         validateIndexerOptions(options);
 
-        const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
         const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
 
-        for (let i = 0; i < documents.length; i += batchSize) {
-          const batch = documents.slice(i, i + batchSize);
-          await processDocumentBatch(ai, collection, batch, options, definition.retry);
-        }
+        await index(ai, collection, documents, options, definition.retry);
 
       } catch (error) {
         throw new Error(`Mongo indexing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

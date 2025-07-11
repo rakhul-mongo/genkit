@@ -16,50 +16,40 @@
 
 import { retrieverRef, Document } from "genkit/retriever";
 import { BaseDefinition, EmbedderOptions, HybridSearchOptions, RetrieverOptions, RetrieverOptionsSchema, RetryOptions, TextSearchOptions, validateRetrieverOptions, VectorSearchOptions } from "../common/types";
-import { DEFAULT_LIMIT } from "../common/constants";
 import { Genkit } from "genkit";
 import { Collection, MongoClient, Document as MongoDocument } from "mongodb";
 import { retryWithDelay } from "../common/retry";
 import { getCollection } from "../common/connection";
 
-async function createTextSearchPipeline(query: string, options: TextSearchOptions) {
-  const { index, path, matchCriteria, fuzzy, limit } = options;
-  return [
-    {
-      $search: {
-        index,
-        text: {
-          query: query,
-          path,
-          matchCriteria,
-          fuzzy,
-        },
-      }
-    },
-    {
-      $limit: limit ?? DEFAULT_LIMIT,
+function appendPipeline(pipeline1?: Array<any>, pipeline2?: Array<any>) {
+  const pipeline: Array<any> = [];
+  if (pipeline1 && pipeline1.length > 0) {
+    pipeline.push(...pipeline1);
+  }
+  if (pipeline2 && pipeline2.length > 0) {
+    pipeline.push(...pipeline2);
+  }
+  return pipeline;
+}
+
+function createTextSearchStage(query: string, options: TextSearchOptions): any {
+  return { $search: { index: options.index, text: { ...options.text, query } } };
+}
+
+function createVectorSearchStage(queryVector: number[], options: VectorSearchOptions): any {
+  return {
+    $vectorSearch: {
+      ...options,
+      queryVector,
     }
-  ];
+  };
 }
 
-async function createVectorSearchPipeline(queryVector: number[], options: VectorSearchOptions) {
-  const { index, path, exact, numCandidates, filter, limit } = options;
-  return [
-    {
-      $vectorSearch: {
-        index,
-        queryVector,
-        path,
-        exact,
-        numCandidates,
-        filter: filter ?? {},
-        limit: limit ?? DEFAULT_LIMIT,
-      }
-    },
-  ];
+function createHybridSearchStage(document: Document, options: HybridSearchOptions): any {
+  return {};
 }
 
-async function executeSearchPipeline(collection: Collection, pipeline: any[], retryOptions?: RetryOptions): Promise<MongoDocument[]> {
+async function executeSearchPipeline(collection: Collection, pipeline: Array<any>, retryOptions?: RetryOptions): Promise<Array<MongoDocument>> {
   return retryWithDelay(
     async () => {
       return await collection.aggregate(pipeline).toArray();
@@ -68,7 +58,7 @@ async function executeSearchPipeline(collection: Collection, pipeline: any[], re
   );
 }
 
-async function convertResultsToDocuments(results: MongoDocument[]): Promise<Document[]> {
+async function convertResultsToDocuments(results: Array<MongoDocument>): Promise<Array<Document>> {
   return results.map((result) => {
     return Document.fromData(result.data, result.dataType, result.metadata);
   });
@@ -78,52 +68,56 @@ async function generateEmbeddings(
   ai: Genkit,
   document: Document,
   options: EmbedderOptions
-) {
-  return await ai.embed({
+): Promise<Array<number>> {
+  const embeddings = await ai.embed({
     embedder: options.embedder,
     options: options.embedderOptions,
     content: document,
   });
+  return embeddings[0].embedding;
 }
 
-async function retrieveText(collection: Collection, query: string, options: TextSearchOptions, retryOptions?: RetryOptions) {
+async function createSearchPipeline(ai: Genkit, document: Document, options: RetrieverOptions): Promise<Array<any>> {
   try {
-    const pipeline = await createTextSearchPipeline(query, options);
+
+    const pipeline: Array<any> = [];
+
+    if ('search' in options) {
+
+      pipeline.push(createTextSearchStage(document.data, options.search));
+
+    } else if ('vectorSearch' in options) {
+
+      const embedder: EmbedderOptions = { embedder: options.embedder, embedderOptions: options.embedderOptions };
+      const embedding: Array<number> = await generateEmbeddings(ai, document, embedder);
+      pipeline.push(createVectorSearchStage(embedding, options.vectorSearch));
+
+    } else if ('hybridSearch' in options) {
+
+      pipeline.push(createHybridSearchStage(document, options.hybridSearch));
+
+    } else {
+      throw new Error(`Unknown retrieval options provided: ${options}`);
+    }
+
+    return appendPipeline(pipeline, options.pipelines);
+
+  } catch (error) {
+    throw new Error(`Failed to create search pipeline: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function retrieve(ai: Genkit, collection: Collection, document: Document, options: RetrieverOptions, retryOptions?: RetryOptions) {
+  try {
+    const pipeline = await createSearchPipeline(ai, document, options);
     const results = await executeSearchPipeline(collection, pipeline, retryOptions);
     const documents = await convertResultsToDocuments(results);
 
     return { documents };
   } catch (error) {
-    throw new Error(`Text search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Mongo retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
 
-async function retrieveVector(ai: Genkit, collection: Collection, document: Document, options: VectorSearchOptions, retryOptions?: RetryOptions) {
-  try {
-    const embeddings = await generateEmbeddings(ai, document, options);
-    const queryVector = embeddings[0].embedding;
-
-    const pipeline = await createVectorSearchPipeline(queryVector, options);
-    const results = await executeSearchPipeline(collection, pipeline, retryOptions);
-    const documents = await convertResultsToDocuments(results);
-
-    return { documents };
-  } catch (error) {
-    throw new Error(`Vector search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
-
-async function retrieveHybrid(ai: Genkit, collection: Collection, document: Document, options: HybridSearchOptions, retryOptions?: RetryOptions) {
-  try {
-    // TODO: Implement hybrid search combining text and vector search
-
-    return {
-      documents: [],
-      metadata: {},
-    };
-  } catch (error) {
-    throw new Error(`Hybrid search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
 }
 
 function configureRetriever(
@@ -143,19 +137,7 @@ function configureRetriever(
 
         const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
 
-        if ('text' in options && options.text) {
-          return await retrieveText(collection, document.data, options.text, definition.retry);
-        }
-
-        if ('vector' in options && options.vector) {
-          return await retrieveVector(ai, collection, document, options.vector, definition.retry);
-        }
-
-        if ('hybrid' in options && options.hybrid) {
-          return await retrieveHybrid(ai, collection, document, options.hybrid, definition.retry);
-        }
-
-        throw new Error(`No retrieval options provided: ${options}`);
+        return await retrieve(ai, collection, document, options, definition.retry);
 
       } catch (error) {
         throw new Error(`Mongo retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

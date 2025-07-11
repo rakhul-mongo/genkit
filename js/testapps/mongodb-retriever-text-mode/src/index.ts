@@ -38,14 +38,20 @@ async function main() {
     options: {
       dbName: MONGODB_DB_NAME,
       collectionName: MONGODB_COLLECTION_NAME,
-      embedder: googleAI.embedder('text-embedding-004'),
-      vectorSearch: {
-        index: "item",
-        path: "item",
-        exact: false,
-        numCandidates: 10,
-        limit: 1,
-      }
+      search: {
+        index: "data",
+        text: {
+          path: "data",
+          fuzzy: {
+            maxEdits: 2,
+            prefixLength: 1,
+            maxExpansions: 50,
+          }
+        }
+      },
+      pipelines: [
+        { $limit: 1 }
+      ]
     }
   });
 

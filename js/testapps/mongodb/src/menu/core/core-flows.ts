@@ -64,8 +64,8 @@ export const menuRetrieveVectorFlow = ai.defineFlow(
       options: {
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
-        vector: {
-          embedder,
+        embedder,
+        vectorSearch: {
           index: "item",
           path: "item",
           exact: false,
@@ -100,17 +100,21 @@ export const menuRetrieveTextFlow = ai.defineFlow(
       options: {
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
-        text: {
+        search: {
           index: "data",
-          path: "data",
-          limit: 3,
-          fuzzy: {
-            maxEdits: 2,
-            prefixLength: 0,
-            maxExpansions: 50,
+          text: {
+            path: "data",
+            fuzzy: {
+              maxEdits: 2,
+              prefixLength: 0,
+              maxExpansions: 50,
+            }
           }
-        }
-      },
+        },
+        pipelines: [
+          { $limit: 3 }
+        ]
+      }
     });
 
     const menuData: Array<MenuItem> = docs.map(

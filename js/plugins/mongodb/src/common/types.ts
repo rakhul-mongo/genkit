@@ -16,10 +16,12 @@
 
 import { z } from 'genkit';
 import { EmbedderArgument } from 'genkit';
-import { MAX_LIMIT, MAX_NUM_CANDIDATES } from './constants';
+import { MAX_NUM_CANDIDATES } from './constants';
 import { CollectionOptions, DbOptions, MongoClientOptions } from 'mongodb';
 
-export type EmbedderCustomOptions = z.ZodTypeAny;
+const MONGO_ID_REGEX = /^[0-9a-fA-F]{24}$/;
+
+// Retry
 
 const RetryOptionsSchema = z.object({
   retryAttempts: z.number().int().positive().optional(),
@@ -29,6 +31,10 @@ const RetryOptionsSchema = z.object({
 
 export type RetryOptions = z.infer<typeof RetryOptionsSchema>;
 
+// Embedder
+
+export type EmbedderCustomOptions = z.ZodTypeAny;
+
 const EmbedderOptionsSchema = z.object({
   embedder: z.custom<EmbedderArgument<EmbedderCustomOptions>>(),
   embedderOptions: z.any().optional(),
@@ -36,8 +42,9 @@ const EmbedderOptionsSchema = z.object({
 
 export type EmbedderOptions = z.infer<typeof EmbedderOptionsSchema>;
 
+// Database Collection
 
-const DatabaseCollectionSchema = z.object({
+const BaseDatabaseCollectionSchema = z.object({
   dbName: z.string().min(1, 'Database name is required'),
   dbOptions: (z.any() as z.ZodType<DbOptions>).optional() ,
   collectionName: z.string().min(1, 'Collection name is required'),
@@ -46,10 +53,14 @@ const DatabaseCollectionSchema = z.object({
 
 // Indexer
 
-export const IndexerOptionsSchema = DatabaseCollectionSchema.and(EmbedderOptionsSchema).and(z.object({
-  fieldName: z.string().min(1).optional(),
-  batchSize: z.number().int().positive().optional(),
-}));
+export const IndexerOptionsSchema =
+  BaseDatabaseCollectionSchema.and(
+  EmbedderOptionsSchema).and(
+  z.object({
+    fieldName: z.string().min(1).optional(),
+    batchSize: z.number().int().positive().optional(),
+  })
+);
 
 export type IndexerOptions = z.infer<typeof IndexerOptionsSchema>;
 
@@ -61,28 +72,38 @@ export function validateIndexerOptions(options: IndexerOptions) {
   }
 }
 
-// Retriever
+// Text Search
 
 const TextSearchSchema = z.object({
-  index: z.string().min(1, 'Index is required'),
-  path: z.string().min(1, 'Path is required'),
-  matchCriteria: z.enum(['all', 'any']).optional(),
-  fuzzy: z.object({
-    maxEdits: z.number().min(1).max(2).optional(),
-    prefixLength: z.number().optional(),
-    maxExpansions: z.number().optional(),
-  }).optional(),
-  limit: z.number().int().positive().max(MAX_LIMIT).optional(),
-});
+  index: z.string().min(1, 'Index is required').describe('The index to search'),
+  text: z.object({
+    path: z.string().min(1, 'Path is required').describe('The path to search'),
+    matchCriteria: z.enum(['any', 'all']).optional().describe('The match criteria to use for the search'),
+    fuzzy: z.object({
+      maxEdits: z.number().int().min(1).max(2).optional(),
+      prefixLength: z.number().int().min(0).optional(),
+      maxExpansions: z.number().int().positive().optional(),
+    }).optional(),
+    score: z.any().optional().describe('Score assigned to matching search term results'),
+    synonyms: z.string().min(1).optional().describe('Synonyms to use for the search'),
+  }).describe('The text search schema specification')
+  .superRefine((data, ctx) => {
+    if (data.fuzzy && data.synonyms) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "fuzzy and synonyms cannot be used together", path: ["fuzzy", "synonyms"] });
+    }
+  })
+}).describe('The search schema specification for text search');
 
 export type TextSearchOptions = z.infer<typeof TextSearchSchema>;
 
-const VectorSearchSchema = EmbedderOptionsSchema.and(z.object({
-  index: z.string().min(1, 'Index is required'),
-  path: z.string().min(1, 'Path is required'),
+// Vector Search
+
+const VectorSearchSchema = z.object({
+  index: z.string().min(1, 'Index is required').describe('The index to search'),
+  path: z.string().min(1, 'Path is required').describe('The path to search'),
   exact: z.boolean().optional(),
   numCandidates: z.number().int().positive().max(MAX_NUM_CANDIDATES).optional(),
-  limit: z.number().int().positive().max(MAX_LIMIT).optional(),
+  limit: z.number().int().positive().optional(),
   filter: z.record(z.any()).optional(),
 }).superRefine((data, ctx) => {
   if (data.exact === false && !data.numCandidates) {
@@ -94,7 +115,7 @@ const VectorSearchSchema = EmbedderOptionsSchema.and(z.object({
   if (data.limit && data.numCandidates && data.limit > data.numCandidates) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "limit cannot exceed numCandidates", path: ["limit"] });
   }
-}));
+}).describe('The vector search schema specification');
 
 export type VectorSearchOptions = z.infer<typeof VectorSearchSchema>;
 
@@ -102,11 +123,19 @@ const HybridSearchSchema = EmbedderOptionsSchema.and(z.object({}));
 
 export type HybridSearchOptions = z.infer<typeof HybridSearchSchema>;
 
-export const RetrieverOptionsSchema = DatabaseCollectionSchema.and(z.union([
-  z.object({ text: TextSearchSchema }),
-  z.object({ vector: VectorSearchSchema }),
-  z.object({ hybrid: HybridSearchSchema }),
-]));
+// Retriever
+
+export const RetrieverOptionsSchema =
+  BaseDatabaseCollectionSchema.and(
+  z.union([
+    z.object({ search: TextSearchSchema }),
+    EmbedderOptionsSchema.and(z.object({ vectorSearch: VectorSearchSchema })),
+    z.object({ hybridSearch: HybridSearchSchema }),
+  ])).and(
+  z.object({
+    pipelines: z.array(z.any()).optional().describe('The aggregation pipeline stages to apply to the search'),
+  })
+);
 
 export type RetrieverOptions = z.infer<typeof RetrieverOptionsSchema>;
 
@@ -117,12 +146,13 @@ export function validateRetrieverOptions(options: RetrieverOptions) {
     throw new Error(`Invalid Mongo retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
 }
-// Crud
+
+// CRUD
 
 export const InputCreateSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
   document: z.object({}).passthrough().describe('The document data to insert'),
 });
@@ -144,11 +174,11 @@ export const OutputCreateSchema = z.object({
 });
 
 export const InputReadSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
-  id: z.string().describe('The document ID to retrieve'),
+  id: z.string().regex(MONGO_ID_REGEX).describe('The document ID to retrieve'),
 });
 
 export type InputRead = z.infer<typeof InputReadSchema>;
@@ -167,11 +197,11 @@ export const OutputReadSchema = z.object({
 });
 
 export const InputUpdateSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
-  id: z.string().describe('The document ID to update'),
+  id: z.string().regex(MONGO_ID_REGEX).describe('The document ID to update'),
   update: z.object({}).passthrough().describe('The MongoDB update operations to apply (must use atomic operators like $set, $unset, $inc, etc.)'),
   options: z.object({}).passthrough().describe('The MongoDB update options to apply').optional(),
 });
@@ -194,11 +224,11 @@ export const OutputUpdateSchema = z.object({
 });
 
 export const InputDeleteSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
-  id: z.string().describe('The document ID to delete'),
+  id: z.string().regex(MONGO_ID_REGEX).describe('The document ID to delete'),
 });
 
 export type InputDelete = z.infer<typeof InputDeleteSchema>;
@@ -219,16 +249,83 @@ export const OutputDeleteSchema = z.object({
 
 // Search Index
 
+const SearchIndexDefinitionSchema = z.object({
+  mappings: z.object({
+    dynamic: z.boolean().optional(),
+    fields: z.object({}).passthrough().optional(),
+  }).passthrough().superRefine((data, ctx) => {
+      if (data.dynamic === false && !data.fields) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "fields are required when dynamic is false",
+          path: ["fields"]
+        });
+      }
+    })
+}).passthrough().describe('The index definition');
+
+
+const VectorSearchIndexSchema = z.object({
+  fields: z.array(
+    z.object({
+      type: z.enum(['vector', 'filter']).describe('Type of the field to use to index fields for vector search'),
+      path: z.string().describe('Name of the field to index'),
+      numDimensions: z.number().positive().max(8192).describe('Number of vector dimensions that Atlas Vector Search enforces at index-time and query-time'),
+      similarity: z.enum(['cosine', 'euclidean', 'dotProduct']).describe('Vector similarity function to use to search for top K-nearest neighbors'),
+      quantization: z.enum(['none', 'scalar', 'binary']).describe('Type of automatic vector quantization for your vectors').optional(),
+    }).passthrough().superRefine((data, ctx) => {
+      if (data.type !== 'vector') {
+        if (data.similarity) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "similarity can only be set for vector fields",
+            path: ["similarity"]
+          });
+        }
+        if (data.numDimensions) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "numDimensions can only be set for vector fields",
+            path: ["numDimensions"]
+          });
+        }
+      }
+    })
+  )
+}).passthrough().describe('The index definition');
+
 export const InputSearchIndexCreateSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
   schema: z.object({
-    name: z.string().describe('Name of the index'),
-    definition: z.object({}).passthrough().describe('The index definition'),
+    name: z.string().describe('Name of the index').optional(),
     type: z.enum(['search', 'vectorSearch']).describe('Type of the index'),
-  }).describe('The index schema'),
+    definition: z.object({}).passthrough()
+  }).superRefine((data, ctx) => {
+    if (data.type === 'search') {
+      try {
+        SearchIndexDefinitionSchema.parse(data.definition);
+      } catch (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid search index definition: ${error instanceof Error ? error.message : 'Validation failed'}`,
+          path: ['definition']
+        });
+      }
+    } else if (data.type === 'vectorSearch') {
+      try {
+        VectorSearchIndexSchema.parse(data.definition);
+      } catch (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid vector search index definition: ${error instanceof Error ? error.message : 'Validation failed'}`,
+          path: ['definition']
+        });
+      }
+    }
+  }).describe('The index schema')
 });
 
 export type InputSearchIndexCreate = z.infer<typeof InputSearchIndexCreateSchema>;
@@ -248,9 +345,9 @@ export const OutputSearchIndexCreateSchema =z.object({
 });
 
 export const InputSearchIndexListSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
 });
 
@@ -271,11 +368,11 @@ export const OutputSearchIndexListSchema = z.object({
 });
 
 export const InputSearchIndexDropSchema = z.object({
-  dbName: z.string().describe('The name of the database to use'),
+  dbName: z.string().describe('The name of the database to use').min(1, 'Database name is required'),
   dbOptions: z.object({}).passthrough().describe('The database options to use').optional(),
-  collectionName: z.string().describe('The name of the collection to use'),
+  collectionName: z.string().describe('The name of the collection to use').min(1, 'Collection name is required'),
   collectionOptions: z.object({}).passthrough().describe('The collection options to use').optional(),
-  indexName: z.string().describe('Name of the index to drop'),
+  indexName: z.string().describe('Name of the index to drop').min(1, 'Index name is required'),
 });
 
 export type InputSearchIndexDrop = z.infer<typeof InputSearchIndexDropSchema>;
@@ -293,8 +390,7 @@ export const OutputSearchIndexDropSchema = z.object({
   message: z.string().describe('Operation result message'),
 });
 
-  // Definition
-
+// Connection
 
 const BaseDefinitionSchema = z.object({
   id: z.string().min(1, 'ID is required'),
@@ -303,7 +399,7 @@ const BaseDefinitionSchema = z.object({
 
 export type BaseDefinition = z.infer<typeof BaseDefinitionSchema>;
 
-export const ConnectionDefinitionSchema = z.object({
+export const ConnectionSchema = z.object({
   url: z.string().url('Invalid  URL'),
   mongoClientOptions: (z.any() as z.ZodType<MongoClientOptions>).optional(),
   indexer: BaseDefinitionSchema.optional(),
@@ -322,11 +418,11 @@ export const ConnectionDefinitionSchema = z.object({
   }
 );
 
-export type ConnectionDefinition = z.infer<typeof ConnectionDefinitionSchema>;
+export type Connection = z.infer<typeof ConnectionSchema>;
 
-export function validateConnectionDefinition(definition: ConnectionDefinition) {
+export function validateConnection(connection: Connection) {
   try {
-    ConnectionDefinitionSchema.parse(definition);
+    ConnectionSchema.parse(connection);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }

@@ -16,7 +16,7 @@
 
 import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
-import { ConnectionDefinition, validateConnectionDefinition } from './common/types';
+import { Connection, validateConnection } from './common/types';
 import { getMongoClient, closeConnections } from './common/connection';
 import { defineIndexer } from './core/indexer';
 import { defineRetriever } from './core/retriever';
@@ -24,15 +24,20 @@ import { defineCRUDTools } from './tools/crud';
 import { defineSearchIndexTools } from './tools/search-indexes';
 
 export function mongodb(
-  connections: ConnectionDefinition[]
+  connections: Array<Connection>
 ): GenkitPlugin {
+
+  if (!connections || connections.length === 0) {
+    throw new Error('At least one Mongo connection must be provided');
+  }
+
   return genkitPlugin(
     'mongodb',
     async (ai: Genkit) => {
       try {
         for (const connection of connections) {
 
-          validateConnectionDefinition(connection);
+          validateConnection(connection);
 
           const client = await getMongoClient(connection.url, connection.mongoClientOptions);
 
@@ -51,7 +56,7 @@ export function mongodb(
 }
 
 export type {
-  ConnectionDefinition as MongoConnectionDefinition,
+  Connection as MongoConnection,
   RetrieverOptions as MongoRetrieverOptions,
   IndexerOptions as MongoIndexerOptions,
 } from './common/types';
