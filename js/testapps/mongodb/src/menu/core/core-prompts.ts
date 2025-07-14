@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import { ai } from '../common/genkit.js';
+import { ai, model } from '../common/genkit.js';
 import { DataMenuQuestionInputSchema } from '../common/types.js';
 import { googleAI } from '@genkit-ai/googleai';
 
 export const menuPrompt = ai.definePrompt({
   name: 'menuPrompt',
-  model: googleAI.model('gemini-2.5-flash'),
+  model,
   input: { schema: DataMenuQuestionInputSchema },
   output: { format: 'text' },
   config: { temperature: 0.1 },

@@ -38,7 +38,10 @@ export const SEARCH_INDEX_TOOL_ID = {
   drop: 'drop',
 };
 
+export const ATLAS_SEARCH_TOOL_ID = 'search';
+
 export const toolRef = (id: string, toolId: string) => `mongodb/${id}/${toolId}`;
 
 export const mongoCrudToolsRefArray = (id: string) => (Object.values(CRUD_TOOL_ID).map(toolId => toolRef(id, toolId)));
 export const mongoSearchIndexToolsRefArray = (id: string) => Object.values(SEARCH_INDEX_TOOL_ID).map(toolId => toolRef(id, toolId));
+export const mongoAtlasSearchToolRef = (id: string) => toolRef(id, ATLAS_SEARCH_TOOL_ID);

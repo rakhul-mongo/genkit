@@ -16,13 +16,12 @@
 
 import { mongoCrudToolsRefArray } from 'genkitx-mongodb';
 import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME } from '../common/config.js';
-import { ai } from '../common/genkit.js';
+import { ai, model } from '../common/genkit.js';
 import { QuestionInputSchema } from '../common/types.js';
-import { googleAI } from '@genkit-ai/googleai';
 
 export const crudPrompt = ai.definePrompt({
   name: 'crudPrompt',
-  model: googleAI.model('gemini-2.5-flash'),
+  model,
   input: { schema: QuestionInputSchema },
   output: { format: 'text' },
   config: { temperature: 0.1 },
