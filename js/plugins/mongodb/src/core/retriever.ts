@@ -58,9 +58,14 @@ async function executeSearchPipeline(collection: Collection, pipeline: Array<any
   );
 }
 
-async function convertResultsToDocuments(results: Array<MongoDocument>): Promise<Array<Document>> {
+async function convertResultsToDocuments(results: Array<MongoDocument>, options: RetrieverOptions): Promise<Array<Document>> {
+  const { dataField, dataTypeField, metadataField } = options;
   return results.map((result) => {
-    return Document.fromData(result.data, result.dataType, result.metadata);
+    let data = "";
+    if (result[dataField]) {
+      data = result[dataField];
+    }
+    return Document.fromData(data, result[dataTypeField], result[metadataField]);
   });
 }
 
@@ -111,7 +116,7 @@ async function retrieve(ai: Genkit, collection: Collection, document: Document, 
   try {
     const pipeline = await createSearchPipeline(ai, document, options);
     const results = await executeSearchPipeline(collection, pipeline, retryOptions);
-    const documents = await convertResultsToDocuments(results);
+    const documents = await convertResultsToDocuments(results, options);
 
     return { documents };
   } catch (error) {
@@ -136,7 +141,6 @@ function configureRetriever(
         validateRetrieverOptions(options);
 
         const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
-
         return await retrieve(ai, collection, document, options, definition.retry);
 
       } catch (error) {

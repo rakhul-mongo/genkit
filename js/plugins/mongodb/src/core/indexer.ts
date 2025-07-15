@@ -17,7 +17,6 @@
 import { Embedding, Genkit } from 'genkit';
 import { indexerRef, Document } from 'genkit/retriever';
 import { Collection, InsertManyResult, MongoClient, Document as MongoDocument } from 'mongodb';
-import { DEFAULT_FIELD_NAME, DEFAULT_BATCH_SIZE } from '../common/constants';
 import { BaseDefinition, IndexerOptions, IndexerOptionsSchema, RetryOptions, validateIndexerOptions } from '../common/types';
 import { retryWithDelay } from '../common/retry';
 import { getCollection } from '../common/connection';
@@ -43,7 +42,8 @@ function createMongoDocuments(
   embeddings: Array<Array<Embedding>>,
   options: IndexerOptions
 ): Array<MongoDocument> {
-  const fieldName = options.fieldName ?? DEFAULT_FIELD_NAME;
+
+  const { fieldName, dataField, dataTypeField, metadataField, skipData } = options;
 
   return documents.flatMap((document, documentIndex) => {
     const embeddingDocuments: Array<Document> = document.getEmbeddingDocuments(embeddings[documentIndex]);
@@ -52,13 +52,17 @@ function createMongoDocuments(
       if (!embedding) {
         throw new Error(`Missing embedding for document ${documentIndex}, chunk ${embeddingDocumentIndex}`);
       }
-      return {
+      const mongoDocument: MongoDocument = {
         [fieldName]: embedding,
-        data: embeddingDocument.data,
-        dataType: embeddingDocument.dataType,
-        metadata: embeddingDocument.metadata,
-        indexedAt: new Date(),
+        [dataTypeField]: embeddingDocument.dataType,
+        [metadataField]: embeddingDocument.metadata,
+        createdAt: new Date(),
       };
+      if (!skipData) {
+        mongoDocument[dataField] = embeddingDocument.data;
+      }
+
+      return mongoDocument;
     });
   });
 }
@@ -82,7 +86,7 @@ async function processDocumentBatch(
 
 async function index(ai: Genkit, collection: Collection, documents: Array<Document>, options: IndexerOptions, retryOptions?: RetryOptions) {
 
-  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  const batchSize = options.batchSize;
   const batchPromises: Array<Promise<InsertManyResult<MongoDocument>>> = [];
 
   for (let i = 0; i < documents.length; i += batchSize) {

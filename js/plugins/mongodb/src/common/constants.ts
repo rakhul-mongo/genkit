@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-export const DEFAULT_FIELD_NAME = "embedding";
+export const DEFAULT_EMBEDDING_FIELD_NAME = "embedding";
+export const DEFAULT_DATA_FIELD_NAME = "data";
+export const DEFAULT_METADATA_FIELD_NAME = "metadata";
+export const DEFAULT_DATA_TYPE_FIELD_NAME = "dataType";
 
 export const DEFAULT_BATCH_SIZE = 100;
 

@@ -18,7 +18,8 @@
     "dotenv": "^16.4.5",
     "genkit": "workspace:*",
     "genkitx-mongodb": "workspace:*",
-    "@genkit-ai/googleai": "workspace:*"
+    "@genkit-ai/googleai": "workspace:*",
+    "@genkit-ai/vertexai": "workspace:*"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

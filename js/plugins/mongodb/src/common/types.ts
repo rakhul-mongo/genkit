@@ -16,7 +16,7 @@
 
 import { z } from 'genkit';
 import { EmbedderArgument } from 'genkit';
-import { MAX_NUM_CANDIDATES } from './constants';
+import { DEFAULT_BATCH_SIZE, DEFAULT_DATA_FIELD_NAME, DEFAULT_DATA_TYPE_FIELD_NAME, DEFAULT_EMBEDDING_FIELD_NAME, DEFAULT_METADATA_FIELD_NAME, MAX_NUM_CANDIDATES } from './constants';
 import { CollectionOptions, DbOptions, MongoClientOptions } from 'mongodb';
 
 const MONGO_ID_REGEX = /^[0-9a-fA-F]{24}$/;
@@ -51,14 +51,22 @@ const BaseDatabaseCollectionSchema = z.object({
   collectionOptions: (z.any() as z.ZodType<CollectionOptions>).optional(),
 });
 
+export const DataFieldSchema = z.object({
+  dataField: z.string().optional().default(DEFAULT_DATA_FIELD_NAME).describe('The field name to use for the data'),
+  metadataField: z.string().optional().default(DEFAULT_METADATA_FIELD_NAME).describe('The field name to use for the metadata'),
+  dataTypeField: z.string().optional().default(DEFAULT_DATA_TYPE_FIELD_NAME).describe('The field name to use for the data type'),
+});
+
 // Indexer
 
 export const IndexerOptionsSchema =
   BaseDatabaseCollectionSchema.and(
   EmbedderOptionsSchema).and(
+  DataFieldSchema).and(
   z.object({
-    fieldName: z.string().min(1).optional(),
-    batchSize: z.number().int().positive().optional(),
+    fieldName: z.string().min(1).optional().default(DEFAULT_EMBEDDING_FIELD_NAME).describe('The field name to use for the embedding'),
+    batchSize: z.number().int().positive().optional().default(DEFAULT_BATCH_SIZE).describe('The batch size to use for the indexing'),
+    skipData: z.boolean().optional().default(false).describe('Whether to skip the data field'),
   })
 );
 
@@ -132,6 +140,7 @@ export const RetrieverOptionsSchema =
     EmbedderOptionsSchema.and(z.object({ vectorSearch: VectorSearchSchema })),
     z.object({ hybridSearch: HybridSearchSchema }),
   ])).and(
+  DataFieldSchema).and(
   z.object({
     pipelines: z.array(z.any()).optional().describe('The aggregation pipeline stages to apply to the search'),
   })
