@@ -14,18 +14,27 @@
  * limitations under the License.
  */
 
-import { Document } from 'genkit';
-import { ai } from '../../common/genkit.js';
-import { DocumentIndexInputSchema, DocumentIndexInput, QuestionInputSchema, AnswerOutputSchema, QuestionInput } from '../../common/types.js';
-import { MONGODB_DB_NAME, MONGODB_DOCUMENT_COLLECTION_NAME } from '../../common/config.js';
-import { getFilePath } from '../../common/utils.js';
+import { multimodalEmbedding001 } from '@genkit-ai/vertexai';
+import fileTypeChecker from 'file-type-checker';
 import fs from 'fs';
-import pdf from 'pdf-parse';
+import { Document } from 'genkit';
+import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
 import { chunk } from 'llm-chunk';
 import { PDFDocument, PDFRawStream } from 'pdf-lib';
-import fileTypeChecker from 'file-type-checker';
-import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
-import { multimodalEmbedding001 } from '@genkit-ai/vertexai';
+import pdf from 'pdf-parse';
+import {
+  MONGODB_DB_NAME,
+  MONGODB_DOCUMENT_COLLECTION_NAME,
+} from '../../common/config.js';
+import { ai } from '../../common/genkit.js';
+import {
+  AnswerOutputSchema,
+  DocumentIndexInput,
+  DocumentIndexInputSchema,
+  QuestionInput,
+  QuestionInputSchema,
+} from '../../common/types.js';
+import { getFilePath } from '../../common/utils.js';
 import { documentPrompt } from './document-prompt.js';
 
 const dbName = MONGODB_DB_NAME;
@@ -71,26 +80,24 @@ export const documentIndexerFlow = ai.defineFlow(
     inputSchema: DocumentIndexInputSchema,
   },
   async (input: DocumentIndexInput) => {
-
     let documents: Document[] = [];
 
-    const filePath = getFilePath('document', input.name+'.pdf');
+    const filePath = getFilePath('document', input.name + '.pdf');
 
     const pdfTxt = await ai.run('extract-text', () => extractText(filePath));
 
-      const chunks = await ai.run('chunk-it', async () =>
-        chunk(pdfTxt, chunkingConfig)
-      );
+    const chunks = await ai.run('chunk-it', async () =>
+      chunk(pdfTxt, chunkingConfig)
+    );
 
-      const imageDocs = await ai.run('extract-images', () =>
-        extractImages(filePath)
-      );
+    const imageDocs = await ai.run('extract-images', () =>
+      extractImages(filePath)
+    );
 
-      const textDocs: Document[] = chunks.map((text: string) => {
-        return Document.fromText(text, { filePath });
-      });
-      documents = imageDocs.concat(textDocs);
-
+    const textDocs: Document[] = chunks.map((text: string) => {
+      return Document.fromText(text, { filePath });
+    });
+    documents = imageDocs.concat(textDocs);
 
     await ai.index({
       indexer: mongoIndexerRef('indexer'),
@@ -102,11 +109,11 @@ export const documentIndexerFlow = ai.defineFlow(
         embedder,
         dataTypeField: 'documentType',
         metadataField: 'documentMetadata',
-      }
+      },
     });
 
     return {
-      answer: `Indexed ${documents.length} documents`
+      answer: `Indexed ${documents.length} documents`,
     };
   }
 );
@@ -150,8 +157,8 @@ export const documentRetrieverFlow = ai.defineFlow(
         collectionName,
         embedder,
         vectorSearch: {
-          index: "document_vector_index",
-          path: "embedding",
+          index: 'document_vector_index',
+          path: 'embedding',
           exact: false,
           numCandidates: 10,
           limit: 3,
@@ -162,17 +169,24 @@ export const documentRetrieverFlow = ai.defineFlow(
     })) as Document[];
 
     return {
-      answer: await documentPrompt({
+      answer: await documentPrompt(
+        {
           question: input.question,
           text: docs.filter((d) => d.text?.length).map((d) => d.text),
-          media: docs.filter((d) => d.media[0]?.url?.length && d.media[0]?.contentType?.length).map((d) => {
-            return {
-              dataUrl: makeDataUrl(d.media[0]),
-            };
-          }),
-        }, {
+          media: docs
+            .filter(
+              (d) => d.media[0]?.url?.length && d.media[0]?.contentType?.length
+            )
+            .map((d) => {
+              return {
+                dataUrl: makeDataUrl(d.media[0]),
+              };
+            }),
+        },
+        {
           onChunk: (c) => sendChunk(c.text),
-        }).then((r) => r.text),
+        }
+      ).then((r) => r.text),
     };
   }
 );

@@ -14,44 +14,48 @@
  * limitations under the License.
  */
 
-import { BASE_RETRY_DELAY_MS, JITTER_FACTOR, RETRY_ATTEMPTS } from '../common/constants';
+import {
+  BASE_RETRY_DELAY_MS,
+  JITTER_FACTOR,
+  RETRY_ATTEMPTS,
+} from '../common/constants';
 import { RetryOptions } from './types';
 
 function calculateDelay(
-    attempt: number,
-    baseDelay: number,
-    jitterFactor: number
-  ): number {
+  attempt: number,
+  baseDelay: number,
+  jitterFactor: number
+): number {
+  const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+  const jitterRange = exponentialDelay * jitterFactor;
+  const jitter = (Math.random() - 0.5) * 2 * jitterRange;
 
-    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
-    const jitterRange = exponentialDelay * jitterFactor;
-    const jitter = (Math.random() - 0.5) * 2 * jitterRange;
-
-    return Math.max(0, exponentialDelay + jitter);
-  }
+  return Math.max(0, exponentialDelay + jitter);
+}
 
 export async function retryWithDelay<T>(
   operation: () => Promise<T>,
   retryOptions?: RetryOptions
 ): Promise<T> {
-
   const retryAttempts = retryOptions?.retryAttempts ?? RETRY_ATTEMPTS;
   const baseDelay = retryOptions?.baseDelay ?? BASE_RETRY_DELAY_MS;
   const jitterFactor = retryOptions?.jitterFactor ?? JITTER_FACTOR;
 
   let lastError: Error = new Error('Unknown error');
 
-  for (let attempt = 1; attempt <= (retryAttempts + 1); attempt++) {
+  for (let attempt = 1; attempt <= retryAttempts + 1; attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt === (retryAttempts + 1)) {
+      if (attempt === retryAttempts + 1) {
         throw lastError;
       }
       const delay = calculateDelay(attempt, baseDelay, jitterFactor);
-      console.warn(`Attempt ${attempt} failed: ${lastError.message}. Retrying in ${delay}ms`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      console.warn(
+        `Attempt ${attempt} failed: ${lastError.message}. Retrying in ${delay}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw lastError!;

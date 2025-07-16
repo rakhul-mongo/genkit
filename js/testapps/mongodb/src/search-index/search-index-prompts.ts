@@ -15,8 +15,8 @@
  */
 
 import { mongoSearchIndexToolsRefArray } from 'genkitx-mongodb';
-import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME } from '../common/config.js';
-import { ai, GEMINI_MODEL } from '../common/genkit.js';
+import { MONGODB_DB_NAME } from '../common/config.js';
+import { GEMINI_MODEL, ai } from '../common/genkit.js';
 import { ToolInputSchema } from '../common/types.js';
 
 export const searchIndexPrompt = ai.definePrompt({

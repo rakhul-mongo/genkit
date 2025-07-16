@@ -16,8 +16,8 @@
  */
 
 import { ai } from '../common/genkit.js';
-import { crudPrompt } from './crud-prompts.js';
 import { ToolInputSchema, ToolOutputSchema } from '../common/types.js';
+import { crudPrompt } from './crud-prompts.js';
 
 export const crudManagement = ai.defineFlow(
   {
@@ -28,7 +28,7 @@ export const crudManagement = ai.defineFlow(
   async (input) => {
     const response = await crudPrompt(input);
     return {
-      response: response.text
+      response: response.text,
     };
   }
 );

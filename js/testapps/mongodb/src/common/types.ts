@@ -47,32 +47,41 @@ export const ToolOutputSchema = z.object({
   response: z.string(),
 });
 
-export const ImageIndexInputSchema = z.array(z.object({
-  name: z.string(),
-  description: z.string()
-}));
+export const ImageIndexInputSchema = z.array(
+  z.object({
+    name: z.string(),
+    description: z.string(),
+  })
+);
 
 export const ImageIndexOutputSchema = z.object({
   answer: z.string(),
 });
 
 export const ImageRetrieveInputSchema = z.object({
-  name: z.string()
+  name: z.string(),
 });
 
-export const ImageRetrieveOutputSchema = z.array(z.object({
-  name: z.string(),
-  description: z.string(),
-}));
+export const ImageRetrieveOutputSchema = z.array(
+  z.object({
+    name: z.string(),
+    description: z.string(),
+  })
+);
 
 export const DocumentPromptSchema = z.object({
   text: z.array(z.string()).optional(),
-  media: z.array(z.object({dataUrl: z.string()}).partial().refine((data) => data.dataUrl)),
+  media: z.array(
+    z
+      .object({ dataUrl: z.string() })
+      .partial()
+      .refine((data) => data.dataUrl)
+  ),
   question: z.string(),
 });
 
 export const DocumentIndexInputSchema = z.object({
-  name: z.string()
+  name: z.string(),
 });
 
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;

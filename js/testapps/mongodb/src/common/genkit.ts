@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { mongodb } from 'genkitx-mongodb';
-import { genkit } from 'genkit';
-import { LOCATION, MONGODB_URL } from './config';
 import { googleAI } from '@genkit-ai/googleai';
-import { multimodalEmbedding001, vertexAI } from '@genkit-ai/vertexai';
+import { vertexAI } from '@genkit-ai/vertexai';
+import { genkit } from 'genkit';
+import { mongodb } from 'genkitx-mongodb';
+import { LOCATION, MONGODB_URL } from './config';
 
 export const ai = genkit({
   plugins: [
@@ -25,14 +25,16 @@ export const ai = genkit({
     vertexAI({
       location: LOCATION,
     }),
-    mongodb([{
-      url: MONGODB_URL,
-      indexer: { id: 'indexer' },
-      retriever: { id: 'retriever' },
-      crudTools: { id: 'crudTools' },
-      searchIndexTools: { id: 'searchIndexTools' },
-    }])
-  ]
+    mongodb([
+      {
+        url: MONGODB_URL,
+        indexer: { id: 'indexer' },
+        retriever: { id: 'retriever' },
+        crudTools: { id: 'crudTools' },
+        searchIndexTools: { id: 'searchIndexTools' },
+      },
+    ]),
+  ],
 });
 
 export const GEMINI_MODEL = googleAI.model('gemini-2.5-flash');

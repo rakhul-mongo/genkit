@@ -19,7 +19,9 @@ config();
 export const MONGODB_URL = process.env.MONGODB_URL!;
 export const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME!;
 export const MONGODB_COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME!;
-export const MONGODB_DOCUMENT_COLLECTION_NAME = process.env.MONGODB_DOCUMENT_COLLECTION_NAME!;
-export const MONGODB_IMAGE_COLLECTION_NAME = process.env.MONGODB_IMAGE_COLLECTION_NAME!;
+export const MONGODB_DOCUMENT_COLLECTION_NAME =
+  process.env.MONGODB_DOCUMENT_COLLECTION_NAME!;
+export const MONGODB_IMAGE_COLLECTION_NAME =
+  process.env.MONGODB_IMAGE_COLLECTION_NAME!;
 export const PROJECT_ID = process.env.PROJECT_ID!;
 export const LOCATION = process.env.LOCATION!;

@@ -16,12 +16,27 @@
 
 import { Genkit } from 'genkit';
 import { MongoClient } from 'mongodb';
-import { retryWithDelay } from '../common/retry';
-import { InputSearchIndexCreateSchema, InputSearchIndexDropSchema, InputSearchIndexListSchema, OutputSearchIndexCreateSchema, OutputSearchIndexDropSchema, OutputSearchIndexListSchema, BaseDefinition, validateSearchIndexCreateOptions, validateSearchIndexListOptions, validateSearchIndexDropOptions } from '../common/types';
-import { SEARCH_INDEX_TOOL_ID, toolRef } from '../common/constants';
 import { getCollection } from '../common/connection';
+import { SEARCH_INDEX_TOOL_ID, toolRef } from '../common/constants';
+import { retryWithDelay } from '../common/retry';
+import {
+  BaseDefinition,
+  InputSearchIndexCreateSchema,
+  InputSearchIndexDropSchema,
+  InputSearchIndexListSchema,
+  OutputSearchIndexCreateSchema,
+  OutputSearchIndexDropSchema,
+  OutputSearchIndexListSchema,
+  validateSearchIndexCreateOptions,
+  validateSearchIndexDropOptions,
+  validateSearchIndexListOptions,
+} from '../common/types';
 
-function configureCreateSearchIndexTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureCreateSearchIndexTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, SEARCH_INDEX_TOOL_ID.create),
@@ -31,10 +46,15 @@ function configureCreateSearchIndexTool(ai: Genkit, client: MongoClient, options
     },
     async (input) => {
       try {
-
         const parsedInput = validateSearchIndexCreateOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const result = await retryWithDelay(
           async () => await collection.createSearchIndex(parsedInput.schema),
@@ -57,7 +77,11 @@ function configureCreateSearchIndexTool(ai: Genkit, client: MongoClient, options
   );
 }
 
-function configureListSearchIndexesTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureListSearchIndexesTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, SEARCH_INDEX_TOOL_ID.list),
@@ -66,12 +90,16 @@ function configureListSearchIndexesTool(ai: Genkit, client: MongoClient, options
       outputSchema: OutputSearchIndexListSchema,
     },
     async (input) => {
-
       try {
-
         const parsedInput = validateSearchIndexListOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const indexes = await retryWithDelay(
           async () => await collection.listSearchIndexes().toArray(),
@@ -94,7 +122,11 @@ function configureListSearchIndexesTool(ai: Genkit, client: MongoClient, options
   );
 }
 
-function configureDropSearchIndexTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureDropSearchIndexTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, SEARCH_INDEX_TOOL_ID.drop),
@@ -103,12 +135,16 @@ function configureDropSearchIndexTool(ai: Genkit, client: MongoClient, options: 
       outputSchema: OutputSearchIndexDropSchema,
     },
     async (input) => {
-
       try {
-
         const parsedInput = validateSearchIndexDropOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         await retryWithDelay(
           async () => await collection.dropSearchIndex(parsedInput.indexName),
@@ -129,13 +165,15 @@ function configureDropSearchIndexTool(ai: Genkit, client: MongoClient, options: 
   );
 }
 
-export function defineSearchIndexTools(ai: Genkit, client: MongoClient, definition?: BaseDefinition) {
-
+export function defineSearchIndexTools(
+  ai: Genkit,
+  client: MongoClient,
+  definition?: BaseDefinition
+) {
   if (!definition?.id) {
     return;
   }
   configureCreateSearchIndexTool(ai, client, definition);
   configureListSearchIndexesTool(ai, client, definition);
   configureDropSearchIndexTool(ai, client, definition);
-
 }

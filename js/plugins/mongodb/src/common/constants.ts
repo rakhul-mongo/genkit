@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-export const DEFAULT_EMBEDDING_FIELD_NAME = "embedding";
-export const DEFAULT_DATA_FIELD_NAME = "data";
-export const DEFAULT_METADATA_FIELD_NAME = "metadata";
-export const DEFAULT_DATA_TYPE_FIELD_NAME = "dataType";
+export const DEFAULT_EMBEDDING_FIELD_NAME = 'embedding';
+export const DEFAULT_DATA_FIELD_NAME = 'data';
+export const DEFAULT_METADATA_FIELD_NAME = 'metadata';
+export const DEFAULT_DATA_TYPE_FIELD_NAME = 'dataType';
 
 export const DEFAULT_BATCH_SIZE = 100;
 
 export const RETRY_ATTEMPTS = 0;
 export const BASE_RETRY_DELAY_MS = 1000;
 export const JITTER_FACTOR = 0.1;
-
 
 export const MAX_NUM_CANDIDATES = 10000;
 
@@ -41,7 +40,10 @@ export const SEARCH_INDEX_TOOL_ID = {
   drop: 'drop',
 };
 
-export const toolRef = (id: string, toolId: string) => `mongodb/${id}/${toolId}`;
+export const toolRef = (id: string, toolId: string) =>
+  `mongodb/${id}/${toolId}`;
 
-export const mongoCrudToolsRefArray = (id: string) => (Object.values(CRUD_TOOL_ID).map(toolId => toolRef(id, toolId)));
-export const mongoSearchIndexToolsRefArray = (id: string) => Object.values(SEARCH_INDEX_TOOL_ID).map(toolId => toolRef(id, toolId));
+export const mongoCrudToolsRefArray = (id: string) =>
+  Object.values(CRUD_TOOL_ID).map((toolId) => toolRef(id, toolId));
+export const mongoSearchIndexToolsRefArray = (id: string) =>
+  Object.values(SEARCH_INDEX_TOOL_ID).map((toolId) => toolRef(id, toolId));

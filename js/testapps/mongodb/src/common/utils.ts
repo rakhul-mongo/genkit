@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
 
 export function getFilePath(directory: string, fileName: string): string {
   return path.join(__dirname, `../core/${directory}/data`, fileName);
 }
 
-export async function getBase64Data(directory: string, fileName: string): Promise<string> {
+export async function getBase64Data(
+  directory: string,
+  fileName: string
+): Promise<string> {
   const filePath = getFilePath(directory, fileName);
   const data = fs.readFileSync(filePath);
   return `${data.toString('base64')}`;

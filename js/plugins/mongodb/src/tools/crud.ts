@@ -16,12 +16,30 @@
 
 import { Genkit } from 'genkit';
 import { MongoClient, ObjectId } from 'mongodb';
-import { retryWithDelay } from '../common/retry';
-import { BaseDefinition, InputCreateSchema, InputDeleteSchema, InputReadSchema, InputUpdateSchema, OutputCreateSchema, OutputDeleteSchema, OutputReadSchema, OutputUpdateSchema, validateCreateOptions, validateDeleteOptions, validateReadOptions, validateUpdateOptions } from '../common/types';
-import { CRUD_TOOL_ID, toolRef } from '../common/constants';
 import { getCollection } from '../common/connection';
+import { CRUD_TOOL_ID, toolRef } from '../common/constants';
+import { retryWithDelay } from '../common/retry';
+import {
+  BaseDefinition,
+  InputCreateSchema,
+  InputDeleteSchema,
+  InputReadSchema,
+  InputUpdateSchema,
+  OutputCreateSchema,
+  OutputDeleteSchema,
+  OutputReadSchema,
+  OutputUpdateSchema,
+  validateCreateOptions,
+  validateDeleteOptions,
+  validateReadOptions,
+  validateUpdateOptions,
+} from '../common/types';
 
-function configureInsertTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureInsertTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.create),
@@ -31,10 +49,15 @@ function configureInsertTool(ai: Genkit, client: MongoClient, options: BaseDefin
     },
     async (input) => {
       try {
-
         const parsedInput = validateCreateOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const result = await retryWithDelay(
           async () => await collection.insertOne(parsedInput.document),
@@ -57,8 +80,11 @@ function configureInsertTool(ai: Genkit, client: MongoClient, options: BaseDefin
   );
 }
 
-
-function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureFindByIdTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.read),
@@ -68,13 +94,19 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDef
     },
     async (input) => {
       try {
-
         const parsedInput = validateReadOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const result = await retryWithDelay(
-          async () => await collection.findOne({ _id: new ObjectId(parsedInput.id) }),
+          async () =>
+            await collection.findOne({ _id: new ObjectId(parsedInput.id) }),
           options.retry
         );
 
@@ -91,7 +123,6 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDef
             message: `Document with ID ${input.id} not found`,
           };
         }
-
       } catch (error) {
         return {
           document: null,
@@ -103,7 +134,11 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDef
   );
 }
 
-function configureUpdateTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureUpdateTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.update),
@@ -113,17 +148,23 @@ function configureUpdateTool(ai: Genkit, client: MongoClient, options: BaseDefin
     },
     async (input) => {
       try {
-
         const parsedInput = validateUpdateOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const result = await retryWithDelay(
-          async () => await collection.updateOne(
-            { _id: new ObjectId(parsedInput.id) },
-            parsedInput.update,
-            parsedInput.options
-          ),
+          async () =>
+            await collection.updateOne(
+              { _id: new ObjectId(parsedInput.id) },
+              parsedInput.update,
+              parsedInput.options
+            ),
           options.retry
         );
 
@@ -147,7 +188,11 @@ function configureUpdateTool(ai: Genkit, client: MongoClient, options: BaseDefin
   );
 }
 
-function configureDeleteTool(ai: Genkit, client: MongoClient, options: BaseDefinition) {
+function configureDeleteTool(
+  ai: Genkit,
+  client: MongoClient,
+  options: BaseDefinition
+) {
   ai.defineTool(
     {
       name: toolRef(options.id, CRUD_TOOL_ID.delete),
@@ -157,13 +202,19 @@ function configureDeleteTool(ai: Genkit, client: MongoClient, options: BaseDefin
     },
     async (input) => {
       try {
-
         const parsedInput = validateDeleteOptions(input);
 
-        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
+        const collection = getCollection(
+          client,
+          parsedInput.dbName,
+          parsedInput.collectionName,
+          parsedInput.dbOptions,
+          parsedInput.collectionOptions
+        );
 
         const result = await retryWithDelay(
-          async () => await collection.deleteOne({ _id: new ObjectId(parsedInput.id) }),
+          async () =>
+            await collection.deleteOne({ _id: new ObjectId(parsedInput.id) }),
           options.retry
         );
 
@@ -183,12 +234,16 @@ function configureDeleteTool(ai: Genkit, client: MongoClient, options: BaseDefin
   );
 }
 
-export function defineCRUDTools(ai: Genkit, client: MongoClient, definition?: BaseDefinition) {
+export function defineCRUDTools(
+  ai: Genkit,
+  client: MongoClient,
+  definition?: BaseDefinition
+) {
   if (!definition?.id) {
     return;
   }
-    configureInsertTool(ai, client, definition);
-    configureFindByIdTool(ai, client, definition);
-    configureUpdateTool(ai, client, definition);
-    configureDeleteTool(ai, client, definition);
+  configureInsertTool(ai, client, definition);
+  configureFindByIdTool(ai, client, definition);
+  configureUpdateTool(ai, client, definition);
+  configureDeleteTool(ai, client, definition);
 }

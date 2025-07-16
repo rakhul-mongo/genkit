@@ -16,71 +16,65 @@
 
 import { Genkit } from 'genkit';
 import { genkitPlugin, GenkitPlugin } from 'genkit/plugin';
+import { closeConnections, getMongoClient } from './common/connection';
 import { Connection, validateConnection } from './common/types';
-import { getMongoClient, closeConnections } from './common/connection';
 import { defineIndexer } from './core/indexer';
 import { defineRetriever } from './core/retriever';
 import { defineCRUDTools } from './tools/crud';
 import { defineSearchIndexTools } from './tools/search-indexes';
 
-export function mongodb(
-  connections: Array<Connection>
-): GenkitPlugin {
-
+export function mongodb(connections: Array<Connection>): GenkitPlugin {
   if (!connections || connections.length === 0) {
     throw new Error('At least one Mongo connection must be provided');
   }
 
-  return genkitPlugin(
-    'mongodb',
-    async (ai: Genkit) => {
-      try {
-        for (const connection of connections) {
+  return genkitPlugin('mongodb', async (ai: Genkit) => {
+    try {
+      for (const connection of connections) {
+        const parsedConnection = validateConnection(connection);
 
-          const parsedConnection = validateConnection(connection);
+        const client = await getMongoClient(
+          parsedConnection.url,
+          parsedConnection.mongoClientOptions
+        );
 
-          const client = await getMongoClient(parsedConnection.url, parsedConnection.mongoClientOptions);
-
-          defineIndexer(ai, client, parsedConnection.indexer);
-          defineRetriever(ai, client, parsedConnection.retriever);
-          defineCRUDTools(ai, client, parsedConnection.crudTools);
-          defineSearchIndexTools(ai, client, parsedConnection.searchIndexTools);
-
-        }
-      } catch (error) {
-        await closeConnections();
-        throw new Error(`Mongo plugin initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        defineIndexer(ai, client, parsedConnection.indexer);
+        defineRetriever(ai, client, parsedConnection.retriever);
+        defineCRUDTools(ai, client, parsedConnection.crudTools);
+        defineSearchIndexTools(ai, client, parsedConnection.searchIndexTools);
       }
+    } catch (error) {
+      await closeConnections();
+      throw new Error(
+        `Mongo plugin initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
-  );
+  });
 }
 
 export type {
   Connection as MongoConnection,
-  IndexerOptions as MongoIndexerOptions,
-  RetrieverOptions as MongoRetrieverOptions,
-
-  RetryOptions as MongoRetryOptions,
   EmbedderOptions as MongoEmbedderOptions,
-
+  HybridSearchOptions as MongoHybridSearchOptions,
+  IndexerOptions as MongoIndexerOptions,
   InputCreate as MongoInputCreate,
-  InputRead as MongoInputRead,
-  InputUpdate as MongoInputUpdate,
   InputDelete as MongoInputDelete,
-
+  InputRead as MongoInputRead,
+  InputSearchIndexCreate as MongoInputSearchIndexCreate,
+  InputSearchIndexDrop as MongoInputSearchIndexDrop,
+  InputSearchIndexList as MongoInputSearchIndexList,
+  InputUpdate as MongoInputUpdate,
+  RetrieverOptions as MongoRetrieverOptions,
+  RetryOptions as MongoRetryOptions,
   TextSearchOptions as MongoTextSearchOptions,
   VectorSearchOptions as MongoVectorSearchOptions,
-  HybridSearchOptions as MongoHybridSearchOptions,
-
-  InputSearchIndexCreate as MongoInputSearchIndexCreate,
-  InputSearchIndexList as MongoInputSearchIndexList,
-  InputSearchIndexDrop as MongoInputSearchIndexDrop,
-
 } from './common/types';
 
+export {
+  mongoCrudToolsRefArray,
+  mongoSearchIndexToolsRefArray,
+} from './common/constants';
 export { mongoIndexerRef } from './core/indexer';
 export { mongoRetrieverRef } from './core/retriever';
-export { mongoCrudToolsRefArray } from './common/constants';
-export { mongoSearchIndexToolsRefArray } from './common/constants';
 
 export default mongodb;

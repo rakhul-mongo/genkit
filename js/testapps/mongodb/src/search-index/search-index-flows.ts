@@ -27,7 +27,7 @@ export const searchIndexManagement = ai.defineFlow(
   async (input) => {
     const response = await searchIndexPrompt(input);
     return {
-      response: response.text
+      response: response.text,
     };
   }
 );

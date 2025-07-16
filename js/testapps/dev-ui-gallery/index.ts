@@ -14,29 +14,27 @@
  * limitations under the License.
  */
 import { googleAI } from '@genkit-ai/googleai';
-import { mongodb } from 'genkitx-mongodb';
 import { genkit } from 'genkit';
 import { Document } from 'genkit/retriever';
+import { mongodb } from 'genkitx-mongodb';
 
 const ai = genkit({
   plugins: [
     googleAI(),
     mongodb([
-        {
-
-        }
-    //   {
-    //     uri: process.env.MONGODB_URI!,
-    //     dbName: 'genkit',
-    //     collection: 'vector_test',
-    //     vectorField: 'summary',
-    //     embedder: textEmbeddingAda002,
-    //     //similarityMetric: 'dotProduct',
-    //     retry: {
-    //       indexing: 3,
-    //       search: 2,
-    //     },
-    //   },
+      {},
+      //   {
+      //     uri: process.env.MONGODB_URI!,
+      //     dbName: 'genkit',
+      //     collection: 'vector_test',
+      //     vectorField: 'summary',
+      //     embedder: textEmbeddingAda002,
+      //     //similarityMetric: 'dotProduct',
+      //     retry: {
+      //       indexing: 3,
+      //       search: 2,
+      //     },
+      //   },
     ]),
   ],
 });
@@ -44,12 +42,13 @@ const ai = genkit({
 const indexer = mongodbIndexerRef({ name: 'vector_test' });
 
 async function main() {
-
-
   await ai.index({
     indexer,
     documents: [
-      Document.fromText('The space shuttle launched successfully from Cape Canaveral.', { id: 'doc1' }),
+      Document.fromText(
+        'The space shuttle launched successfully from Cape Canaveral.',
+        { id: 'doc1' }
+      ),
       // Document.fromText('A delicious recipe for making vegan lasagna at home.', { id: 'doc2' }),
       // Document.fromText('A brief history of the Apollo moon missions.', { id: 'doc3' }),
       // Document.fromText('Climate change is accelerating due to greenhouse gas emissions.', { id: 'doc4' }),

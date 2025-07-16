@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-import { Collection, CollectionOptions, DbOptions, MongoClient, MongoClientOptions } from 'mongodb';
+import {
+  Collection,
+  CollectionOptions,
+  DbOptions,
+  MongoClient,
+  MongoClientOptions,
+} from 'mongodb';
 
 const connectionPool = new Map<string, MongoClient>();
 
 const createConnectionKey = (
   url: string,
-  options?: MongoClientOptions,
+  options?: MongoClientOptions
 ): string =>
   JSON.stringify({
     url,
@@ -35,9 +41,11 @@ async function closeMongoClient(client: MongoClient): Promise<void> {
   }
 }
 
-export async function getMongoClient(url: string, options?: MongoClientOptions): Promise<MongoClient> {
+export async function getMongoClient(
+  url: string,
+  options?: MongoClientOptions
+): Promise<MongoClient> {
   try {
-
     const connectionKey = createConnectionKey(url, options);
     if (connectionPool.has(connectionKey)) {
       return connectionPool.get(connectionKey)!;
@@ -49,16 +57,18 @@ export async function getMongoClient(url: string, options?: MongoClientOptions):
     connectionPool.set(connectionKey, client);
 
     return client;
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to get Mongo client: ${errorMessage}`);
   }
 }
 
 export async function closeConnections(): Promise<void> {
   try {
-    const closePromises = Array.from(connectionPool.values()).map(client => closeMongoClient(client));
+    const closePromises = Array.from(connectionPool.values()).map((client) =>
+      closeMongoClient(client)
+    );
     await Promise.allSettled(closePromises);
   } catch (error) {
     console.error('Error during connection cleanup:', error);
@@ -70,7 +80,9 @@ export function getCollection(
   dbName: string,
   collectionName: string,
   dbOptions?: DbOptions,
-  collectionOptions?: CollectionOptions,
+  collectionOptions?: CollectionOptions
 ): Collection {
-  return client.db(dbName, dbOptions).collection(collectionName, collectionOptions);
+  return client
+    .db(dbName, dbOptions)
+    .collection(collectionName, collectionOptions);
 }

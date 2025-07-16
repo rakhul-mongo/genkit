@@ -17,9 +17,11 @@
 // Export all of the example prompts and flows
 
 // menu
-export { menuIndexerFlow } from './core/menu/menu-flows.js';
-export { menuRetrieveTextFlow } from './core/menu/menu-flows.js';
-export { menuRetrieveVectorFlow } from './core/menu/menu-flows.js';
+export {
+  menuIndexerFlow,
+  menuRetrieveTextFlow,
+  menuRetrieveVectorFlow,
+} from './core/menu/menu-flows.js';
 export { menuPrompt } from './core/menu/menu-prompts.js';
 
 // crud
@@ -31,9 +33,13 @@ export { searchIndexManagement } from './search-index/search-index-flows.js';
 export { searchIndexPrompt } from './search-index/search-index-prompts.js';
 
 // image
-export { imageIndexerFlow } from './core/image/image-flows.js';
-export { imageRetrieverFlow } from './core/image/image-flows.js';
+export {
+  imageIndexerFlow,
+  imageRetrieverFlow,
+} from './core/image/image-flows.js';
 
 // document
-export { documentIndexerFlow } from './core/document/document-flows.js';
-export { documentRetrieverFlow } from './core/document/document-flows.js';
+export {
+  documentIndexerFlow,
+  documentRetrieverFlow,
+} from './core/document/document-flows.js';

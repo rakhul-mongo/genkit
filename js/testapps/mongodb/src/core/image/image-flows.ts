@@ -14,13 +14,21 @@
  * limitations under the License.
  */
 
-import { Document } from 'genkit';
-import { ai } from '../../common/genkit.js';
-import { ImageIndexInputSchema, ImageIndexOutputSchema, ImageRetrieveOutputSchema, ImageRetrieveInputSchema } from '../../common/types.js';
-import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
-import { MONGODB_DB_NAME, MONGODB_IMAGE_COLLECTION_NAME } from '../../common/config.js';
-import { getBase64Data } from '../../common/utils.js';
 import { multimodalEmbedding001 } from '@genkit-ai/vertexai';
+import { Document } from 'genkit';
+import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
+import {
+  MONGODB_DB_NAME,
+  MONGODB_IMAGE_COLLECTION_NAME,
+} from '../../common/config.js';
+import { ai } from '../../common/genkit.js';
+import {
+  ImageIndexInputSchema,
+  ImageIndexOutputSchema,
+  ImageRetrieveInputSchema,
+  ImageRetrieveOutputSchema,
+} from '../../common/types.js';
+import { getBase64Data } from '../../common/utils.js';
 
 const dbName = MONGODB_DB_NAME;
 const collectionName = MONGODB_IMAGE_COLLECTION_NAME;
@@ -33,13 +41,11 @@ export const imageIndexerFlow = ai.defineFlow(
     outputSchema: ImageIndexOutputSchema,
   },
   async (input) => {
-
     for (const { name, description } of input) {
-
-      const imageData = await getBase64Data('image', name+'.jpg');
+      const imageData = await getBase64Data('image', name + '.jpg');
 
       const documents = [
-        Document.fromMedia(imageData, 'image/jpeg', { name, description })
+        Document.fromMedia(imageData, 'image/jpeg', { name, description }),
       ];
 
       await ai.index({
@@ -54,12 +60,12 @@ export const imageIndexerFlow = ai.defineFlow(
           skipData: true,
           dataTypeField: 'imageType',
           metadataField: 'imageMetadata',
-        }
+        },
       });
     }
 
     return {
-      answer: `Indexed ${input.length} images`
+      answer: `Indexed ${input.length} images`,
     };
   }
 );
@@ -71,10 +77,9 @@ export const imageRetrieverFlow = ai.defineFlow(
     outputSchema: ImageRetrieveOutputSchema,
   },
   async (input) => {
-
     const { name } = input;
 
-    const imageData = await getBase64Data('image', name+'.jpg');
+    const imageData = await getBase64Data('image', name + '.jpg');
     const document = Document.fromMedia(imageData, 'image/jpeg');
 
     const docs = await ai.retrieve({
@@ -85,20 +90,20 @@ export const imageRetrieverFlow = ai.defineFlow(
         collectionName,
         embedder,
         vectorSearch: {
-          index: "image_vector_index",
-          path: "embedding",
+          index: 'image_vector_index',
+          path: 'embedding',
           exact: false,
           numCandidates: 10,
           limit: 2,
         },
         dataTypeField: 'imageType',
         metadataField: 'imageMetadata',
-      }
+      },
     });
 
     return docs.map((doc) => ({
       name: doc.metadata?.name,
-      description: doc.metadata?.description
+      description: doc.metadata?.description,
     }));
   }
 );

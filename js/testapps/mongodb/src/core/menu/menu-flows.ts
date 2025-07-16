@@ -14,13 +14,21 @@
  * limitations under the License.
  */
 
-import { Document, z } from 'genkit';
-import { ai } from '../../common/genkit.js';
-import { AnswerOutputSchema, MenuItem, MenuItemSchema, QuestionInputSchema } from '../../common/types.js';
-import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
-import { MONGODB_COLLECTION_NAME, MONGODB_DB_NAME } from '../../common/config.js';
-import { menuPrompt } from './menu-prompts.js';
 import { googleAI } from '@genkit-ai/googleai';
+import { Document, z } from 'genkit';
+import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
+import {
+  MONGODB_COLLECTION_NAME,
+  MONGODB_DB_NAME,
+} from '../../common/config.js';
+import { ai } from '../../common/genkit.js';
+import {
+  AnswerOutputSchema,
+  MenuItem,
+  MenuItemSchema,
+  QuestionInputSchema,
+} from '../../common/types.js';
+import { menuPrompt } from './menu-prompts.js';
 
 const embedder = googleAI.embedder('text-embedding-004');
 
@@ -48,7 +56,7 @@ export const menuIndexerFlow = ai.defineFlow(
         dataField: 'menuItem',
         dataTypeField: 'menuItemType',
         metadataField: 'menuItemMetadata',
-      }
+      },
     });
     return { answer: `Indexed ${menuItems.length} menu items` };
   }
@@ -69,8 +77,8 @@ export const menuRetrieveVectorFlow = ai.defineFlow(
         collectionName: MONGODB_COLLECTION_NAME,
         embedder,
         vectorSearch: {
-          index: "item_vector_index",
-          path: "embedding",
+          index: 'item_vector_index',
+          path: 'embedding',
           exact: false,
           numCandidates: 10,
           limit: 3,
@@ -106,22 +114,20 @@ export const menuRetrieveTextFlow = ai.defineFlow(
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
         search: {
-          index: "item_search_index",
+          index: 'item_search_index',
           text: {
-            path: "menuItem",
+            path: 'menuItem',
             fuzzy: {
               maxEdits: 2,
               prefixLength: 0,
               maxExpansions: 50,
-            }
-          }
+            },
+          },
         },
         dataTypeField: 'menuItemType',
         metadataField: 'menuItemMetadata',
-        pipelines: [
-          { $limit: 3 }
-        ]
-      }
+        pipelines: [{ $limit: 3 }],
+      },
     });
 
     const menuData: Array<MenuItem> = docs.map(
