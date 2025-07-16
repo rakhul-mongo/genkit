@@ -37,14 +37,14 @@ export function mongodb(
       try {
         for (const connection of connections) {
 
-          validateConnection(connection);
+          const parsedConnection = validateConnection(connection);
 
-          const client = await getMongoClient(connection.url, connection.mongoClientOptions);
+          const client = await getMongoClient(parsedConnection.url, parsedConnection.mongoClientOptions);
 
-          defineIndexer(ai, client, connection.indexer);
-          defineRetriever(ai, client, connection.retriever);
-          defineCRUDTools(ai, client, connection.crudTools);
-          defineSearchIndexTools(ai, client, connection.searchIndexTools);
+          defineIndexer(ai, client, parsedConnection.indexer);
+          defineRetriever(ai, client, parsedConnection.retriever);
+          defineCRUDTools(ai, client, parsedConnection.crudTools);
+          defineSearchIndexTools(ai, client, parsedConnection.searchIndexTools);
 
         }
       } catch (error) {
@@ -57,11 +57,30 @@ export function mongodb(
 
 export type {
   Connection as MongoConnection,
-  RetrieverOptions as MongoRetrieverOptions,
   IndexerOptions as MongoIndexerOptions,
+  RetrieverOptions as MongoRetrieverOptions,
+
+  RetryOptions as MongoRetryOptions,
+  EmbedderOptions as MongoEmbedderOptions,
+
+  InputCreate as MongoInputCreate,
+  InputRead as MongoInputRead,
+  InputUpdate as MongoInputUpdate,
+  InputDelete as MongoInputDelete,
+
+  TextSearchOptions as MongoTextSearchOptions,
+  VectorSearchOptions as MongoVectorSearchOptions,
+  HybridSearchOptions as MongoHybridSearchOptions,
+
+  InputSearchIndexCreate as MongoInputSearchIndexCreate,
+  InputSearchIndexList as MongoInputSearchIndexList,
+  InputSearchIndexDrop as MongoInputSearchIndexDrop,
+
 } from './common/types';
+
 export { mongoIndexerRef } from './core/indexer';
 export { mongoRetrieverRef } from './core/retriever';
-export { mongoCrudToolsRefArray, mongoSearchIndexToolsRefArray } from './common/constants';
+export { mongoCrudToolsRefArray } from './common/constants';
+export { mongoSearchIndexToolsRefArray } from './common/constants';
 
 export default mongodb;

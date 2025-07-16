@@ -72,9 +72,9 @@ export const IndexerOptionsSchema =
 
 export type IndexerOptions = z.infer<typeof IndexerOptionsSchema>;
 
-export function validateIndexerOptions(options: IndexerOptions) {
+export function validateIndexerOptions(options: IndexerOptions): IndexerOptions {
   try {
-    IndexerOptionsSchema.parse(options);
+    return IndexerOptionsSchema.parse(options);
   } catch (validationError) {
     throw new Error(`Invalid Mongo indexer options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -148,9 +148,9 @@ export const RetrieverOptionsSchema =
 
 export type RetrieverOptions = z.infer<typeof RetrieverOptionsSchema>;
 
-export function validateRetrieverOptions(options: RetrieverOptions) {
+export function validateRetrieverOptions(options: RetrieverOptions): RetrieverOptions {
   try {
-    RetrieverOptionsSchema.parse(options);
+    return RetrieverOptionsSchema.parse(options);
   } catch (validationError) {
     throw new Error(`Invalid Mongo retriever options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -168,9 +168,9 @@ export const InputCreateSchema = z.object({
 
 export type InputCreate = z.infer<typeof InputCreateSchema>;
 
-export function validateCreateOptions(input: InputCreate) {
+export function validateCreateOptions(input: InputCreate): InputCreate {
   try {
-    InputCreateSchema.parse(input);
+    return InputCreateSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -192,9 +192,9 @@ export const InputReadSchema = z.object({
 
 export type InputRead = z.infer<typeof InputReadSchema>;
 
-export function validateReadOptions(input: InputRead) {
+export function validateReadOptions(input: InputRead): InputRead {
   try {
-    InputReadSchema.parse(input);
+    return InputReadSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -217,9 +217,9 @@ export const InputUpdateSchema = z.object({
 
 export type InputUpdate = z.infer<typeof InputUpdateSchema>;
 
-export function validateUpdateOptions(input: InputUpdate) {
+export function validateUpdateOptions(input: InputUpdate): InputUpdate {
   try {
-    InputUpdateSchema.parse(input);
+    return InputUpdateSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -242,9 +242,9 @@ export const InputDeleteSchema = z.object({
 
 export type InputDelete = z.infer<typeof InputDeleteSchema>;
 
-export function validateDeleteOptions(input: InputDelete) {
+export function validateDeleteOptions(input: InputDelete): InputDelete {
   try {
-    InputDeleteSchema.parse(input);
+    return InputDeleteSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -339,9 +339,9 @@ export const InputSearchIndexCreateSchema = z.object({
 
 export type InputSearchIndexCreate = z.infer<typeof InputSearchIndexCreateSchema>;
 
-export function validateSearchIndexCreateOptions(input: InputSearchIndexCreate) {
+export function validateSearchIndexCreateOptions(input: InputSearchIndexCreate): InputSearchIndexCreate {
   try {
-    InputSearchIndexCreateSchema.parse(input);
+    return InputSearchIndexCreateSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -362,9 +362,9 @@ export const InputSearchIndexListSchema = z.object({
 
 export type InputSearchIndexList = z.infer<typeof InputSearchIndexListSchema>;
 
-export function validateSearchIndexListOptions(input: InputSearchIndexList) {
+export function validateSearchIndexListOptions(input: InputSearchIndexList): InputSearchIndexList {
   try {
-    InputSearchIndexListSchema.parse(input);
+    return InputSearchIndexListSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -386,9 +386,9 @@ export const InputSearchIndexDropSchema = z.object({
 
 export type InputSearchIndexDrop = z.infer<typeof InputSearchIndexDropSchema>;
 
-export function validateSearchIndexDropOptions(input: InputSearchIndexDrop) {
+export function validateSearchIndexDropOptions(input: InputSearchIndexDrop): InputSearchIndexDrop {
   try {
-    InputSearchIndexDropSchema.parse(input);
+    return InputSearchIndexDropSchema.parse(input);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }
@@ -429,9 +429,9 @@ export const ConnectionSchema = z.object({
 
 export type Connection = z.infer<typeof ConnectionSchema>;
 
-export function validateConnection(connection: Connection) {
+export function validateConnection(connection: Connection): Connection {
   try {
-    ConnectionSchema.parse(connection);
+    return ConnectionSchema.parse(connection);
   } catch (validationError) {
     throw new Error(`Invalid Mongo options: ${validationError instanceof Error ? validationError.message : 'Validation failed'}`);
   }

@@ -17,8 +17,12 @@
 import fs from "fs";
 import path from "path";
 
-export async function getBase64Data(fileName: string): Promise<string> {
-  const filePath = path.join(__dirname, '../core/image/data', fileName);
+export function getFilePath(directory: string, fileName: string): string {
+  return path.join(__dirname, `../core/${directory}/data`, fileName);
+}
+
+export async function getBase64Data(directory: string, fileName: string): Promise<string> {
+  const filePath = getFilePath(directory, fileName);
   const data = fs.readFileSync(filePath);
   return `${data.toString('base64')}`;
 }

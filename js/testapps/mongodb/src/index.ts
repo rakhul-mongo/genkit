@@ -33,3 +33,7 @@ export { searchIndexPrompt } from './search-index/search-index-prompts.js';
 // image
 export { imageIndexerFlow } from './core/image/image-flows.js';
 export { imageRetrieverFlow } from './core/image/image-flows.js';
+
+// document
+export { documentIndexerFlow } from './core/document/document-flows.js';
+export { documentRetrieverFlow } from './core/document/document-flows.js';

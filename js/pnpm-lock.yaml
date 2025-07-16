@@ -1681,13 +1681,28 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.5.0
+      file-type-checker:
+        specifier: ^1.1.2
+        version: 1.1.4
       genkit:
         specifier: workspace:*
         version: link:../../genkit
       genkitx-mongodb:
         specifier: workspace:*
         version: link:../../plugins/mongodb
+      llm-chunk:
+        specifier: ^0.0.1
+        version: 0.0.1
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
+      pdf-parse:
+        specifier: ^1.1.1
+        version: 1.1.1
     devDependencies:
+      '@types/pdf-parse':
+        specifier: ^1.1.4
+        version: 1.1.5
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1

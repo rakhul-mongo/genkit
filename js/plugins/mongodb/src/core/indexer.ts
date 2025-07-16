@@ -44,7 +44,6 @@ function createMongoDocuments(
 ): Array<MongoDocument> {
 
   const { fieldName, dataField, dataTypeField, metadataField, skipData } = options;
-
   return documents.flatMap((document, documentIndex) => {
     const embeddingDocuments: Array<Document> = document.getEmbeddingDocuments(embeddings[documentIndex]);
     return embeddingDocuments.map((embeddingDocument: Document, embeddingDocumentIndex: number) => {
@@ -110,11 +109,11 @@ function configureIndexer(
     async (documents: Array<Document>, options: IndexerOptions) => {
       try {
 
-        validateIndexerOptions(options);
+        const parsedOptions = validateIndexerOptions(options);
 
-        const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
+        const collection = getCollection(client, parsedOptions.dbName, parsedOptions.collectionName, parsedOptions.dbOptions, parsedOptions.collectionOptions);
 
-        await index(ai, collection, documents, options, definition.retry);
+        await index(ai, collection, documents, parsedOptions, definition.retry);
 
       } catch (error) {
         throw new Error(`Mongo indexing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

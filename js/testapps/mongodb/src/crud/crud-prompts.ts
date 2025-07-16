@@ -49,7 +49,6 @@ export const crudPrompt = ai.definePrompt({
     Always be helpful and provide clear responses about what operation you performed. If you need more information from the user, ask for it.
 
     Database: ${MONGODB_DB_NAME}
-    Collection: ${MONGODB_COLLECTION_NAME}
 
     User request: {{request}}
 

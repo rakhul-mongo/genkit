@@ -138,10 +138,10 @@ function configureRetriever(
     async (document: Document, options: RetrieverOptions) => {
       try {
 
-        validateRetrieverOptions(options);
+        const parsedOptions = validateRetrieverOptions(options);
 
-        const collection = getCollection(client, options.dbName, options.collectionName, options.dbOptions, options.collectionOptions);
-        return await retrieve(ai, collection, document, options, definition.retry);
+        const collection = getCollection(client, parsedOptions.dbName, parsedOptions.collectionName, parsedOptions.dbOptions, parsedOptions.collectionOptions);
+        return await retrieve(ai, collection, document, parsedOptions, definition.retry);
 
       } catch (error) {
         throw new Error(`Mongo retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

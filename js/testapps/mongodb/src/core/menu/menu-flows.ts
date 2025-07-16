@@ -42,9 +42,12 @@ export const menuIndexerFlow = ai.defineFlow(
       options: {
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
-        fieldName: 'item',
-        batchSize: 50,
+        fieldName: 'embedding',
+        batchSize: 5,
         embedder,
+        dataField: 'menuItem',
+        dataTypeField: 'menuItemType',
+        metadataField: 'menuItemMetadata',
       }
     });
     return { answer: `Indexed ${menuItems.length} menu items` };
@@ -66,12 +69,14 @@ export const menuRetrieveVectorFlow = ai.defineFlow(
         collectionName: MONGODB_COLLECTION_NAME,
         embedder,
         vectorSearch: {
-          index: "item",
-          path: "item",
+          index: "item_vector_index",
+          path: "embedding",
           exact: false,
           numCandidates: 10,
           limit: 3,
-        }
+        },
+        dataTypeField: 'menuItemType',
+        metadataField: 'menuItemMetadata',
       },
     });
 
@@ -101,9 +106,9 @@ export const menuRetrieveTextFlow = ai.defineFlow(
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
         search: {
-          index: "data",
+          index: "item_search_index",
           text: {
-            path: "data",
+            path: "menuItem",
             fuzzy: {
               maxEdits: 2,
               prefixLength: 0,
@@ -111,6 +116,8 @@ export const menuRetrieveTextFlow = ai.defineFlow(
             }
           }
         },
+        dataTypeField: 'menuItemType',
+        metadataField: 'menuItemMetadata',
         pipelines: [
           { $limit: 3 }
         ]

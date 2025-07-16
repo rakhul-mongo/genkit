@@ -32,12 +32,12 @@ function configureCreateSearchIndexTool(ai: Genkit, client: MongoClient, options
     async (input) => {
       try {
 
-        validateSearchIndexCreateOptions(input);
+        const parsedInput = validateSearchIndexCreateOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const result = await retryWithDelay(
-          async () => await collection.createSearchIndex(input.schema),
+          async () => await collection.createSearchIndex(parsedInput.schema),
           options.retry
         );
 
@@ -69,9 +69,9 @@ function configureListSearchIndexesTool(ai: Genkit, client: MongoClient, options
 
       try {
 
-        validateSearchIndexListOptions(input);
+        const parsedInput = validateSearchIndexListOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const indexes = await retryWithDelay(
           async () => await collection.listSearchIndexes().toArray(),
@@ -106,18 +106,18 @@ function configureDropSearchIndexTool(ai: Genkit, client: MongoClient, options: 
 
       try {
 
-        validateSearchIndexDropOptions(input);
+        const parsedInput = validateSearchIndexDropOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         await retryWithDelay(
-          async () => await collection.dropSearchIndex(input.indexName),
+          async () => await collection.dropSearchIndex(parsedInput.indexName),
           options.retry
         );
 
         return {
           success: true,
-          message: `Index ${input.indexName} drop operation started successfully`,
+          message: `Index ${parsedInput.indexName} drop operation started successfully`,
         };
       } catch (error) {
         return {

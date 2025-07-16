@@ -16,7 +16,7 @@
 
 import { Document } from 'genkit';
 import { ai } from '../../common/genkit.js';
-import { MediaIndexInputSchema, MediaIndexOutputSchema, MediaRetrieveOutputSchema, MediaRetrieveInputSchema } from '../../common/types.js';
+import { ImageIndexInputSchema, ImageIndexOutputSchema, ImageRetrieveOutputSchema, ImageRetrieveInputSchema } from '../../common/types.js';
 import { mongoIndexerRef, mongoRetrieverRef } from 'genkitx-mongodb';
 import { MONGODB_DB_NAME, MONGODB_IMAGE_COLLECTION_NAME } from '../../common/config.js';
 import { getBase64Data } from '../../common/utils.js';
@@ -29,14 +29,14 @@ const embedder = multimodalEmbedding001;
 export const imageIndexerFlow = ai.defineFlow(
   {
     name: 'Image - Indexer Flow',
-    inputSchema: MediaIndexInputSchema,
-    outputSchema: MediaIndexOutputSchema,
+    inputSchema: ImageIndexInputSchema,
+    outputSchema: ImageIndexOutputSchema,
   },
   async (input) => {
 
     for (const { name, description } of input) {
 
-      const imageData = await getBase64Data(name+'.jpg');
+      const imageData = await getBase64Data('image', name+'.jpg');
 
       const documents = [
         Document.fromMedia(imageData, 'image/jpeg', { name, description })
@@ -48,7 +48,7 @@ export const imageIndexerFlow = ai.defineFlow(
         options: {
           dbName,
           collectionName,
-          fieldName: 'image',
+          fieldName: 'embedding',
           batchSize: 50,
           embedder,
           skipData: true,
@@ -67,14 +67,14 @@ export const imageIndexerFlow = ai.defineFlow(
 export const imageRetrieverFlow = ai.defineFlow(
   {
     name: 'Image - Retrieve Flow',
-    inputSchema: MediaRetrieveInputSchema,
-    outputSchema: MediaRetrieveOutputSchema,
+    inputSchema: ImageRetrieveInputSchema,
+    outputSchema: ImageRetrieveOutputSchema,
   },
   async (input) => {
 
     const { name } = input;
 
-    const imageData = await getBase64Data(name+'.jpg');
+    const imageData = await getBase64Data('image', name+'.jpg');
     const document = Document.fromMedia(imageData, 'image/jpeg');
 
     const docs = await ai.retrieve({
@@ -85,8 +85,8 @@ export const imageRetrieverFlow = ai.defineFlow(
         collectionName,
         embedder,
         vectorSearch: {
-          index: "image",
-          path: "image",
+          index: "image_vector_index",
+          path: "embedding",
           exact: false,
           numCandidates: 10,
           limit: 2,

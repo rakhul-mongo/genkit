@@ -47,27 +47,41 @@ export const ToolOutputSchema = z.object({
   response: z.string(),
 });
 
-export const MediaIndexInputSchema = z.array(z.object({
+export const ImageIndexInputSchema = z.array(z.object({
   name: z.string(),
   description: z.string()
 }));
 
-export const MediaIndexOutputSchema = z.object({
+export const ImageIndexOutputSchema = z.object({
   answer: z.string(),
 });
 
-export const MediaRetrieveInputSchema = z.object({
+export const ImageRetrieveInputSchema = z.object({
   name: z.string()
 });
 
-export const MediaRetrieveOutputSchema = z.array(z.object({
+export const ImageRetrieveOutputSchema = z.array(z.object({
   name: z.string(),
   description: z.string(),
 }));
 
+export const DocumentPromptSchema = z.object({
+  text: z.array(z.string()).optional(),
+  media: z.array(z.object({dataUrl: z.string()}).partial().refine((data) => data.dataUrl)),
+  question: z.string(),
+});
+
+export const DocumentIndexInputSchema = z.object({
+  name: z.string()
+});
 
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;
 export type AnswerOutput = z.infer<typeof AnswerOutputSchema>;
 export type DataMenuPromptInput = z.infer<typeof DataMenuQuestionInputSchema>;
-export type MediaIndexInput = z.infer<typeof MediaIndexInputSchema>;
-export type MediaIndexOutput = z.infer<typeof MediaIndexOutputSchema>;
+
+export type ImageIndexInput = z.infer<typeof ImageIndexInputSchema>;
+export type ImageIndexOutput = z.infer<typeof ImageIndexOutputSchema>;
+export type ImageRetrieveInput = z.infer<typeof ImageRetrieveInputSchema>;
+export type ImageRetrieveOutput = z.infer<typeof ImageRetrieveOutputSchema>;
+
+export type DocumentIndexInput = z.infer<typeof DocumentIndexInputSchema>;

@@ -32,12 +32,12 @@ function configureInsertTool(ai: Genkit, client: MongoClient, options: BaseDefin
     async (input) => {
       try {
 
-        validateCreateOptions(input);
+        const parsedInput = validateCreateOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const result = await retryWithDelay(
-          async () => await collection.insertOne(input.document),
+          async () => await collection.insertOne(parsedInput.document),
           options.retry
         );
 
@@ -69,12 +69,12 @@ function configureFindByIdTool(ai: Genkit, client: MongoClient, options: BaseDef
     async (input) => {
       try {
 
-        validateReadOptions(input);
+        const parsedInput = validateReadOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const result = await retryWithDelay(
-          async () => await collection.findOne({ _id: new ObjectId(input.id) }),
+          async () => await collection.findOne({ _id: new ObjectId(parsedInput.id) }),
           options.retry
         );
 
@@ -114,15 +114,15 @@ function configureUpdateTool(ai: Genkit, client: MongoClient, options: BaseDefin
     async (input) => {
       try {
 
-        validateUpdateOptions(input);
+        const parsedInput = validateUpdateOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const result = await retryWithDelay(
           async () => await collection.updateOne(
-            { _id: new ObjectId(input.id) },
-            input.update,
-            input.options
+            { _id: new ObjectId(parsedInput.id) },
+            parsedInput.update,
+            parsedInput.options
           ),
           options.retry
         );
@@ -158,12 +158,12 @@ function configureDeleteTool(ai: Genkit, client: MongoClient, options: BaseDefin
     async (input) => {
       try {
 
-        validateDeleteOptions(input);
+        const parsedInput = validateDeleteOptions(input);
 
-        const collection = getCollection(client, input.dbName, input.collectionName, input.dbOptions, input.collectionOptions);
+        const collection = getCollection(client, parsedInput.dbName, parsedInput.collectionName, parsedInput.dbOptions, parsedInput.collectionOptions);
 
         const result = await retryWithDelay(
-          async () => await collection.deleteOne({ _id: new ObjectId(input.id) }),
+          async () => await collection.deleteOne({ _id: new ObjectId(parsedInput.id) }),
           options.retry
         );
 
