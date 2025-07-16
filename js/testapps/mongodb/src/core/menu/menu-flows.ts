@@ -50,7 +50,7 @@ export const menuIndexerFlow = ai.defineFlow(
       options: {
         dbName: MONGODB_DB_NAME,
         collectionName: MONGODB_COLLECTION_NAME,
-        fieldName: 'embedding',
+        embeddingField: 'embedding',
         batchSize: 5,
         embedder,
         dataField: 'menuItem',

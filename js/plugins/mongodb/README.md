@@ -17,6 +17,8 @@ npm i --save genkitx-mongodb
 - **Search Index Management**: Create, list, and drop search indexes
 - **Batch Indexing**: Efficient document indexing with configurable batch sizes
 - **Retry Logic**: Built-in retry mechanisms for improved reliability
+- **Flexible Field Configuration**: Customizable field names for data, metadata, and embeddings
+- **Multiple Connection Support**: Configure multiple MongoDB connections with different settings
 
 ## Using the plugin
 
@@ -31,13 +33,24 @@ const ai = genkit({
   plugins: [
     mongodb([
       {
-        id: 'my-mongo-connection',
         url: 'mongodb://localhost:27017',
+        mongoClientOptions: {
+          // Optional MongoDB client options
+        },
         indexer: {
           id: 'indexer',
+          retry: {
+            retryAttempts: 3,
+            baseDelay: 1000,
+            jitterFactor: 0.1,
+          },
         },
         retriever: {
           id: 'retriever',
+          retry: {
+            retryAttempts: 2,
+            baseDelay: 500,
+          },
         },
         crudTools: {
           id: 'crud',
@@ -49,6 +62,48 @@ const ai = genkit({
     ]),
   ],
 });
+```
+
+### Multiple Connections
+
+You can configure multiple MongoDB connections with different settings:
+
+```ts
+mongodb([
+  {
+    url: 'mongodb://primary:27017',
+    indexer: {
+      id: 'primary-indexer',
+      retry: {
+        retryAttempts: 3,
+        baseDelay: 1000,
+      },
+    },
+    retriever: {
+      id: 'primary-retriever',
+      retry: {
+        retryAttempts: 2,
+        baseDelay: 500,
+      },
+    },
+    crudTools: { id: 'primary-crud' },
+    searchIndexTools: { id: 'primary-search' },
+  },
+  {
+    url: 'mongodb://secondary:27017',
+    indexer: {
+      id: 'secondary-indexer',
+      retry: {
+        retryAttempts: 5,
+        baseDelay: 2000,
+        jitterFactor: 0.2,
+      },
+    },
+    retriever: { id: 'secondary-retriever' },
+    crudTools: { id: 'secondary-crud' },
+    searchIndexTools: { id: 'secondary-search' },
+  },
+])
 ```
 
 ### Indexing Documents
@@ -69,9 +124,12 @@ await ai.index({
     dbName: 'myDatabase',
     collectionName: 'myCollection',
     embedder: googleAI.embedder('text-embedding-004'),
-    fieldName: 'embedding',
+    embeddingField: 'embedding',
     batchSize: 100,
     skipData: false, // Optional: Set to true to exclude original data from storage
+    dataField: 'data', // Optional: Custom field name for document data
+    metadataField: 'metadata', // Optional: Custom field name for metadata
+    dataTypeField: 'dataType', // Optional: Custom field name for data type
   },
 });
 ```
@@ -220,13 +278,52 @@ await ai.runTool({
 });
 ```
 
+### Multimodal Document Processing
+
+The plugin supports multimodal embeddings for processing images and documents:
+
+```ts
+import { multimodalEmbedding001 } from '@genkit-ai/vertexai';
+
+// Index images with multimodal embeddings
+await ai.index({
+  indexer: mongoIndexerRef('indexer'),
+  documents: imageDocuments,
+  options: {
+    dbName: 'myDatabase',
+    collectionName: 'imageCollection',
+    embedder: multimodalEmbedding001,
+    embeddingField: 'imageEmbedding',
+    dataField: 'imageData',
+    metadataField: 'imageMetadata',
+    dataTypeField: 'imageType',
+  },
+});
+
+// Retrieve similar images
+const results = await ai.retrieve({
+  retriever: mongoRetrieverRef('retriever'),
+  query: 'find images similar to a cat',
+  options: {
+    dbName: 'myDatabase',
+    collectionName: 'imageCollection',
+    embedder: multimodalEmbedding001,
+    vectorSearch: {
+      index: 'image_embedding_index',
+      path: 'imageEmbedding',
+      numCandidates: 50,
+      limit: 5,
+    },
+  },
+});
+```
+
 ## Configuration Options
 
 ### Connection Configuration
 
 ```ts
 {
-  id: string;                    // Unique identifier for the connection
   url: string;                   // MongoDB connection string
   mongoClientOptions?: object;   // MongoDB client options
   indexer?: BaseDefinition;      // Indexer configuration
@@ -236,14 +333,28 @@ await ai.runTool({
 }
 ```
 
+### Base Definition Configuration
+
+Each component (indexer, retriever, crudTools, searchIndexTools) uses a base definition:
+
+```ts
+{
+  id: string;                    // Unique identifier for the component
+  retry?: RetryOptions;          // Optional retry options for this component
+}
+```
+
 ### Indexer Options
 
 ```ts
 {
   dbName: string;                // Database name
+  dbOptions?: object;            // Database options
   collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
   embedder: EmbedderArgument;    // Embedder for generating vectors
-  fieldName?: string;            // Field name for embeddings (default: 'embedding')
+  embedderOptions?: object;      // Optional embedder-specific options
+  embeddingField?: string;       // Field name for embeddings (default: 'embedding')
   batchSize?: number;            // Batch size for indexing (default: 100)
   skipData?: boolean;            // Optional: Skip storing original data (default: false)
   dataField?: string;            // Field name for data (default: 'data')
@@ -257,9 +368,12 @@ await ai.runTool({
 ```ts
 {
   dbName: string;                // Database name
+  dbOptions?: object;            // Database options
   collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
   // For vector search:
   embedder?: EmbedderArgument;   // Embedder for query vectorization
+  embedderOptions?: object;      // Optional embedder-specific options
   vectorSearch?: {
     index: string;               // Vector search index name
     path: string;                // Field path for vectors
@@ -286,20 +400,125 @@ await ai.runTool({
   // For hybrid search:
   hybridSearch?: {
     embedder: EmbedderArgument;  // Embedder for hybrid search
+    embedderOptions?: object;    // Optional embedder-specific options
   };
   pipelines?: array;             // Aggregation pipeline stages
 }
+```
+
+### CRUD Tool Options
+
+```ts
+// Create
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  document: object;              // Document to create
+}
+
+// Read
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  id: string;                    // Document ID (24-character hex string)
+}
+
+// Update
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  id: string;                    // Document ID (24-character hex string)
+  document: object;              // Update document (use MongoDB operators like $set)
+}
+
+// Delete
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  id: string;                    // Document ID (24-character hex string)
+}
+```
+
+### Search Index Tool Options
+
+```ts
+// Create
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  indexName: string;             // Index name
+  definition: object;            // Index definition
+}
+
+// List
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+}
+
+// Drop
+{
+  dbName: string;                // Database name
+  dbOptions?: object;            // Database options
+  collectionName: string;        // Collection name
+  collectionOptions?: object;    // Collection options
+  indexName: string;             // Index name to drop
+}
+```
+
+### Retry Options
+
+Retry options can be configured for individual components (indexer, retriever, crudTools, searchIndexTools):
+
+```ts
+{
+  retryAttempts?: number;        // Number of retry attempts (default: 0)
+  baseDelay?: number;            // Base delay in milliseconds (default: 1000)
+  jitterFactor?: number;         // Jitter factor for exponential backoff (default: 0.1)
+}
+```
+
+Each component can have its own retry configuration, allowing fine-grained control over retry behavior for different operations.
+
+## Tool References
+
+The plugin provides helper functions to generate tool references:
+
+```ts
+import { mongoCrudToolsRefArray, mongoSearchIndexToolsRefArray } from 'genkitx-mongodb';
+
+// Get all CRUD tool references for a connection
+const crudTools = mongoCrudToolsRefArray('my-connection-id');
+// Returns: ['mongodb/my-connection-id/create', 'mongodb/my-connection-id/read', ...]
+
+// Get all search index tool references for a connection
+const searchIndexTools = mongoSearchIndexToolsRefArray('my-connection-id');
+// Returns: ['mongodb/my-connection-id/create', 'mongodb/my-connection-id/list', ...]
 ```
 
 ## Examples
 
 See the [test application](https://github.com/firebase/genkit/tree/main/js/testapps/mongodb) for complete examples including:
 
-- Menu item indexing and retrieval
-- Image document processing
-- CRUD operations by ID
+- Menu item indexing and retrieval with vector and text search
+- Image document processing with multimodal embeddings
+- CRUD operations by document ID
 - Search index management
-- Text and vector search workflows
+- Document processing with chunking and image extraction
+- Multiple connection configurations
+- Hybrid search workflows
 
 ## Requirements
 

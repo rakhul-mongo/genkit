@@ -53,7 +53,7 @@ function createMongoDocuments(
   embeddings: Array<Array<Embedding>>,
   options: IndexerOptions
 ): Array<MongoDocument> {
-  const { fieldName, dataField, dataTypeField, metadataField, skipData } =
+  const { embeddingField, dataField, dataTypeField, metadataField, skipData } =
     options;
   return documents.flatMap((document, documentIndex) => {
     const embeddingDocuments: Array<Document> = document.getEmbeddingDocuments(
@@ -69,7 +69,7 @@ function createMongoDocuments(
           );
         }
         const mongoDocument: MongoDocument = {
-          [fieldName]: embedding,
+          [embeddingField]: embedding,
           [dataTypeField]: embeddingDocument.dataType,
           [metadataField]: embeddingDocument.metadata,
           createdAt: new Date(),

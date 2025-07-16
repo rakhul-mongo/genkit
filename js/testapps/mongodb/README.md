@@ -1,16 +1,19 @@
 # MongoDB Plugin Test Application
 
-This test application demonstrates the comprehensive capabilities of the MongoDB plugin for Genkit, showcasing vector search, text search, CRUD operations, search index management, and multimodal document processing.
+This test application demonstrates the comprehensive capabilities of the MongoDB plugin for Genkit, showcasing vector search, text search, hybrid search, CRUD operations, search index management, and multimodal document processing.
 
 ## Features Demonstrated
 
 - **Vector Search**: Semantic search using embeddings with MongoDB's vector search capabilities
 - **Text Search**: Full-text search with fuzzy matching and synonyms support
+- **Hybrid Search**: Combine vector and text search for enhanced results
 - **CRUD Operations**: Create, read, update, and delete documents by ID
 - **Search Index Management**: Create, list, and drop search indexes
 - **Multimodal Processing**: Image indexing and retrieval using multimodal embeddings
+- **Document Processing**: PDF document processing with text extraction and image extraction
 - **Menu Understanding**: Restaurant menu analysis with both vector and text search
 - **Batch Indexing**: Efficient document indexing with configurable batch sizes
+- **Flexible Field Configuration**: Customizable field names for data, metadata, and embeddings
 
 ## Prerequisites
 
@@ -30,6 +33,7 @@ MONGODB_DB_NAME=your_database_name
 MONGODB_COLLECTION_NAME=your_collection_name
 MONGODB_MEDIA_COLLECTION_NAME=your_media_collection
 MONGODB_IMAGE_COLLECTION_NAME=your_image_collection
+MONGODB_DOCUMENT_COLLECTION_NAME=your_document_collection
 
 # Google Cloud Configuration
 PROJECT_ID=your_google_cloud_project_id
@@ -82,6 +86,11 @@ await ai.runFlow('Menu - Retrieve Vector Flow', { question: "What vegetarian opt
 await ai.runFlow('Menu - Retrieve Text Flow', { question: "Show me items with chicken" });
 ```
 
+**Key Features:**
+- Custom field names for menu data (`menuItem`, `menuItemType`, `menuItemMetadata`)
+- Configurable batch size for efficient indexing
+- Support for both vector and text search strategies
+
 #### 2. Image Processing (`src/core/image/`)
 
 Demonstrates multimodal document processing with image embeddings:
@@ -104,12 +113,36 @@ await ai.runFlow('Image - Retrieve Flow', { name: 'cat' });
 **Key Features:**
 - Uses multimodal embeddings for image understanding
 - Supports image similarity search
-- Configurable field names for image data and metadata
+- Custom field names for image data (`imageData`, `imageType`, `imageMetadata`)
 - Optional data storage with `skipData` option
+
+#### 3. Document Processing (`src/core/document/`)
+
+Demonstrates PDF document processing with text and image extraction:
+
+- **Document Indexer Flow**: Processes PDF documents with text chunking and image extraction
+- **Document Retriever Flow**: Retrieves relevant document chunks using vector search
+
+**Example Usage:**
+```typescript
+// Index a PDF document
+await ai.runFlow('Document - Indexer Flow', {
+  name: 'sample-document'
+});
+
+// Query document content
+await ai.runFlow('Document - Retrieve Flow', { question: "What is the main topic?" });
+```
+
+**Key Features:**
+- PDF text extraction and chunking with configurable parameters
+- Image extraction from PDF documents
+- Multimodal embeddings for both text and image content
+- Custom field names for document data (`documentType`, `documentMetadata`)
 
 ### Tool Management
 
-#### 3. CRUD Operations (`src/crud/`)
+#### 4. CRUD Operations (`src/crud/`)
 
 Demonstrates basic database operations by document ID:
 
@@ -121,7 +154,20 @@ Demonstrates basic database operations by document ID:
 - `mongodb/crud/update` - Update documents by ID
 - `mongodb/crud/delete` - Delete documents by ID
 
-#### 4. Search Index Management (`src/search-index/`)
+**Example Usage:**
+```typescript
+// Create a new menu item
+await ai.runFlow('CRUD Management Flow', {
+  request: "Create a new menu item: Margherita Pizza - Fresh mozzarella, tomato sauce, basil - $18.99"
+});
+
+// Read a menu item by ID
+await ai.runFlow('CRUD Management Flow', {
+  request: "Read menu item with ID: 507f1f77bcf86cd799439011"
+});
+```
+
+#### 5. Search Index Management (`src/search-index/`)
 
 Demonstrates search index administration:
 
@@ -132,6 +178,19 @@ Demonstrates search index administration:
 - `mongodb/search-index/list` - List existing indexes
 - `mongodb/search-index/drop` - Drop search indexes
 
+**Example Usage:**
+```typescript
+// Create a text search index
+await ai.runFlow('Search Index Management Flow', {
+  request: "Create a text search index named 'text_index' for the 'data' field"
+});
+
+// List all search indexes
+await ai.runFlow('Search Index Management Flow', {
+  request: "List all search indexes in the collection"
+});
+```
+
 ## Configuration
 
 ### MongoDB Plugin Setup
@@ -139,20 +198,35 @@ Demonstrates search index administration:
 The application configures the MongoDB plugin with:
 
 ```typescript
-mongodb([{
-  url: MONGODB_URL,
-  indexer: { id: 'indexer' },
-  retriever: { id: 'retriever' },
-  crudTools: { id: 'crudTools' },
-  searchIndexTools: { id: 'searchIndexTools' },
-}])
+mongodb([
+  {
+    url: MONGODB_URL,
+    indexer: {
+      id: 'indexer',
+      retry: {
+        retryAttempts: 3,
+        baseDelay: 1000,
+        jitterFactor: 0.1,
+      },
+    },
+    retriever: {
+      id: 'retriever',
+      retry: {
+        retryAttempts: 2,
+        baseDelay: 500,
+      },
+    },
+    crudTools: { id: 'crudTools' },
+    searchIndexTools: { id: 'searchIndexTools' },
+  },
+])
 ```
 
 ### AI Models Used
 
 - **Google AI**: `gemini-2.5-flash` for text generation
 - **Google AI**: `text-embedding-004` for text embeddings
-- **Vertex AI**: `multimodalEmbedding001` for image embeddings
+- **Vertex AI**: `multimodalEmbedding001` for image and document embeddings
 
 ## Example Workflows
 
@@ -169,14 +243,21 @@ mongodb([{
 3. **Image Processing**: Demonstrates multimodal embeddings for image similarity search with configurable field names
 4. **Metadata Management**: Store and retrieve image metadata for enhanced search capabilities
 
-### 3. Database Management Workflow
+### 3. Document Processing Workflow
+
+1. **Index Documents**: Use Document Indexer Flow to process PDF documents with text chunking and image extraction
+2. **Query Documents**: Use Document Retriever Flow to find relevant document chunks using vector search
+3. **Multimodal Processing**: Demonstrates handling of both text and image content from documents
+4. **Chunking Strategy**: Configurable text chunking with overlap and length parameters
+
+### 4. Database Management Workflow
 
 1. **Create Documents**: Use CRUD tools to add new documents
 2. **Query Documents**: Use CRUD tools to retrieve documents by ID
 3. **Update Documents**: Use CRUD tools to modify existing documents
 4. **Delete Documents**: Use CRUD tools to remove documents
 
-### 4. Search Index Workflow
+### 5. Search Index Workflow
 
 1. **Create Indexes**: Use search index tools to create text and vector search indexes
 2. **List Indexes**: Use search index tools to view existing indexes
@@ -190,6 +271,7 @@ Each flow includes example JSON files that you can use as inputs in the Genkit U
 
 - `src/core/menu/examples/` - Sample menu items
 - `src/core/image/examples/` - Sample image data
+- `src/core/document/examples/` - Sample document processing requests
 - `src/crud/examples/` - Sample CRUD operations
 - `src/search-index/examples/` - Sample index configurations
 
@@ -206,21 +288,31 @@ Each flow includes example JSON files that you can use as inputs in the Genkit U
 ### Menu Collection
 ```typescript
 {
-  item: number[],           // Vector embedding
-  data: string,             // Menu item text
-  dataType: string,         // Document type
-  metadata: MenuItem,       // Menu item metadata
-  createdAt: Date           // Indexing timestamp
+  embedding: number[],       // Vector embedding
+  menuItem: string,          // Menu item text
+  menuItemType: string,      // Document type
+  menuItemMetadata: MenuItem, // Menu item metadata
+  createdAt: Date            // Indexing timestamp
 }
 ```
 
 ### Image Collection
 ```typescript
 {
-  image: number[],          // Multimodal embedding
-  imageType: string,        // Document type
-  imageMetadata: object,    // Image metadata
-  createdAt: Date           // Indexing timestamp
+  embedding: number[],       // Multimodal embedding
+  imageType: string,         // Document type
+  imageMetadata: object,     // Image metadata
+  createdAt: Date            // Indexing timestamp
+}
+```
+
+### Document Collection
+```typescript
+{
+  embedding: number[],       // Multimodal embedding
+  documentType: string,      // Document type
+  documentMetadata: object,  // Document metadata
+  createdAt: Date            // Indexing timestamp
 }
 ```
 
@@ -232,6 +324,7 @@ Each flow includes example JSON files that you can use as inputs in the Genkit U
 2. **Search Indexes**: Verify that search indexes are created before using search features
 3. **Environment Variables**: Check that all required environment variables are set
 4. **Google Cloud**: Ensure proper authentication and API access
+5. **PDF Processing**: Ensure PDF files are available in the data directory
 
 ### Search Index Requirements
 
@@ -256,7 +349,7 @@ For vector search, create a search index on the embedding field:
   "mappings": {
     "dynamic": true,
     "fields": {
-      "item": {
+      "embedding": {
         "type": "vector",
         "dimensions": 768,
         "similarity": "cosine"
@@ -265,6 +358,15 @@ For vector search, create a search index on the embedding field:
   }
 }
 ```
+
+### Retry Configuration
+
+The application demonstrates retry configuration at the component level:
+
+- **Indexer**: 3 retry attempts with 1000ms base delay and 0.1 jitter factor
+- **Retriever**: 2 retry attempts with 500ms base delay
+- **CRUD Tools**: No retry configuration (uses defaults)
+- **Search Index Tools**: No retry configuration (uses defaults)
 
 ## License
 

@@ -247,3 +247,6 @@ export function defineCRUDTools(
   configureUpdateTool(ai, client, definition);
   configureDeleteTool(ai, client, definition);
 }
+
+export const mongoCrudToolsRefArray = (id: string) =>
+  Object.values(CRUD_TOOL_ID).map((toolId) => toolRef(id, toolId));

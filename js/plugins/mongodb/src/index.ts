@@ -70,10 +70,8 @@ export type {
   VectorSearchOptions as MongoVectorSearchOptions,
 } from './common/types';
 
-export {
-  mongoCrudToolsRefArray,
-  mongoSearchIndexToolsRefArray,
-} from './common/constants';
+export { mongoCrudToolsRefArray } from './tools/crud';
+export { mongoSearchIndexToolsRefArray } from './tools/search-indexes';
 export { mongoIndexerRef } from './core/indexer';
 export { mongoRetrieverRef } from './core/retriever';
 

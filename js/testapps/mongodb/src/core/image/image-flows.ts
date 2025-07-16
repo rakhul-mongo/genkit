@@ -54,7 +54,7 @@ export const imageIndexerFlow = ai.defineFlow(
         options: {
           dbName,
           collectionName,
-          fieldName: 'embedding',
+          embeddingField: 'embedding',
           batchSize: 50,
           embedder,
           skipData: true,

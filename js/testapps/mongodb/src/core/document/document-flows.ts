@@ -105,7 +105,7 @@ export const documentIndexerFlow = ai.defineFlow(
       options: {
         dbName,
         collectionName,
-        fieldName: 'embedding',
+        embeddingField: 'embedding',
         embedder,
         dataTypeField: 'documentType',
         metadataField: 'documentMetadata',

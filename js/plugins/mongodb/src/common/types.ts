@@ -83,7 +83,7 @@ export const IndexerOptionsSchema = BaseDatabaseCollectionSchema.and(
   .and(DataFieldSchema)
   .and(
     z.object({
-      fieldName: z
+      embeddingField: z
         .string()
         .min(1)
         .optional()
@@ -502,7 +502,7 @@ const VectorSearchIndexSchema = z
             }
           }
         })
-    ),
+    ).min(1, 'At least one vector field is required'),
   })
   .passthrough()
   .describe('The index definition');

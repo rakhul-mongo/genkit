@@ -177,3 +177,6 @@ export function defineSearchIndexTools(
   configureListSearchIndexesTool(ai, client, definition);
   configureDropSearchIndexTool(ai, client, definition);
 }
+
+export const mongoSearchIndexToolsRefArray = (id: string) =>
+  Object.values(SEARCH_INDEX_TOOL_ID).map((toolId) => toolRef(id, toolId));
