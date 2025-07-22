@@ -25,3 +25,4 @@ export const MONGODB_IMAGE_COLLECTION_NAME =
   process.env.MONGODB_IMAGE_COLLECTION_NAME!;
 export const PROJECT_ID = process.env.PROJECT_ID!;
 export const LOCATION = process.env.LOCATION!;
+export const MONGO_MCP_URL = process.env.MONGO_MCP_URL!;

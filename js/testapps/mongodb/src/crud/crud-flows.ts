@@ -17,7 +17,7 @@
 
 import { ai } from '../common/genkit.js';
 import { ToolInputSchema, ToolOutputSchema } from '../common/types.js';
-import { crudPrompt } from './crud-prompts.js';
+import { crudPrompt, getNewCrudPrompt } from './crud-prompts.js';
 
 export const crudManagement = ai.defineFlow(
   {
@@ -30,5 +30,39 @@ export const crudManagement = ai.defineFlow(
     return {
       response: response.text,
     };
+  }
+);
+
+
+export const newCrudManagement = ai.defineFlow(
+  {
+    name: 'Tools - CRUD - New Management Flow',
+    inputSchema: ToolInputSchema,
+    outputSchema: ToolOutputSchema,
+  },
+  async (input) => {
+    try {
+      const prompt = await getNewCrudPrompt();
+      console.log('Prompt created successfully');
+
+      const response = await prompt(input);
+      console.log('Full response:', JSON.stringify(response, null, 2));
+
+      if (!response.text) {
+        console.log('Response text is empty, checking response structure:', response);
+        return {
+          response: `No text response received. Response structure: ${JSON.stringify(response)}`,
+        };
+      }
+
+      return {
+        response: response.text,
+      };
+    } catch (error) {
+      console.error('Error in newCrudManagement flow:', error);
+      return {
+        response: `Error occurred: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 );

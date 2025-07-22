@@ -17,7 +17,8 @@ import { googleAI } from '@genkit-ai/googleai';
 import { vertexAI } from '@genkit-ai/vertexai';
 import { genkit } from 'genkit';
 import { mongodb } from 'genkitx-mongodb';
-import { LOCATION, MONGODB_URL } from './config';
+import { LOCATION, MONGO_MCP_URL, MONGODB_URL } from './config';
+import { createMcpHost } from '@genkit-ai/mcp';
 
 export const ai = genkit({
   plugins: [
@@ -38,3 +39,22 @@ export const ai = genkit({
 });
 
 export const GEMINI_MODEL = googleAI.model('gemini-2.5-flash');
+
+export const MONGO_MCP_HOST = createMcpHost({
+  name: 'mcp-host',
+  mcpServers: {
+    "MongoDB": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server",
+        "--connectionString",
+        MONGO_MCP_URL,
+      ]
+    }
+  }
+});
+
+export const MONGO_TOOLS = async () => {
+  return await MONGO_MCP_HOST.getActiveTools(ai);
+};

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { MONGO_TOOLS } from './common/genkit.js';
+
 // Export all of the example prompts and flows
 
 // menu
@@ -25,7 +27,7 @@ export {
 export { menuPrompt } from './core/menu/menu-prompts.js';
 
 // crud
-export { crudManagement } from './crud/crud-flows.js';
+export { crudManagement, newCrudManagement } from './crud/crud-flows.js';
 export { crudPrompt } from './crud/crud-prompts.js';
 
 // search index

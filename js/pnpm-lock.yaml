@@ -1687,6 +1687,9 @@ importers:
       '@genkit-ai/googleai':
         specifier: workspace:*
         version: link:../../plugins/googleai
+      '@genkit-ai/mcp':
+        specifier: workspace:*
+        version: link:../../plugins/mcp
       '@genkit-ai/vertexai':
         specifier: workspace:*
         version: link:../../plugins/vertexai
